@@ -8,6 +8,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 
 @SpringBootApplication
 public class ShopApplication {
@@ -17,6 +18,7 @@ public class ShopApplication {
     }
 
     @Bean
+    @ConditionalOnBean(WelcomeService.class)
     CommandLineRunner showBeans(
             ApplicationContext context,
             WelcomeService welcomeService) {
