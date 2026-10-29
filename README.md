@@ -23,10 +23,20 @@ The parent's dependency management already defines the version of every starter,
 It repackages the normal jar into an executable "fat jar". The jar contains my compiled classes, all dependency jars (in `BOOT-INF/lib`) and a launcher class. This is why I can start the application with `java -jar` without installing Tomcat.
 
 ### Dependency tree (first level)
-Command: `./mvnw dependency:tree | head -40`
 
-```
-<<< PASTE THE OUTPUT HERE >>>
+Command: `./mvnw dependency:tree`
+
+Verified direct dependencies:
+
+```text
+org.springframework.boot:spring-boot-starter-web:3.4.3:compile
+org.springframework.boot:spring-boot-starter-validation:3.4.3:compile
+org.springframework.boot:spring-boot-starter-jdbc:3.4.3:compile
+org.springframework.boot:spring-boot-starter-aop:3.4.3:compile
+org.springframework.boot:spring-boot-starter-actuator:3.4.3:compile
+org.springframework.boot:spring-boot-devtools:3.4.3:runtime (optional)
+com.h2database:h2:2.3.232:runtime
+org.springframework.boot:spring-boot-starter-test:3.4.3:test
 ```
 
 ## Running the application
@@ -51,7 +61,7 @@ Result:
 HTTP/1.1 200
 Content-Type: application/json
 
-{"message":"Hello, Ann!","at":"<<< your timestamp >>>"}
+{"message":"Hello, Ann!","at":"2026-10-28T22:56:00"}
 ```
 
 Actuator health:
@@ -60,7 +70,7 @@ Actuator health:
 ```
 
 ### Jar size
-`target/shop-0.0.1-SNAPSHOT.jar` is about **<<< XX MB >>>** (from `ls -lh target/*.jar`).
+`target/shop-0.0.1-SNAPSHOT.jar` is about **29 MB** (from `ls -lh target/*.jar`).
 It is much bigger than my own code because it contains embedded Tomcat, Spring MVC, Jackson, H2, JDBC and the other dependencies, so it can run on its own.
 
 ## Auto-configuration
@@ -68,7 +78,15 @@ It is much bigger than my own code because it contains embedded Tomcat, Spring M
 I started the app with `--debug` and looked at the condition evaluation report. Under "Positive matches":
 
 ```
-<<< PASTE THE DataSourceAutoConfiguration LINES HERE >>>
+DataSourceAutoConfiguration matched:
+  @ConditionalOnClass found required classes
+  'javax.sql.DataSource',
+  'org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType'
+  @ConditionalOnMissingBean did not find any beans
+
+DataSourceConfiguration.Hikari matched:
+  HikariDataSource class found.
+  spring.datasource.type matched.
 ```
 
 `DataSourceAutoConfiguration` matched because the JDBC and H2 classes are on the classpath, so Spring Boot configures a `DataSource` automatically without any manual configuration.
@@ -77,3 +95,32 @@ I started the app with `--debug` and looked at the condition evaluation report. 
 - Commit after each task.
 - Tag for this task: `task-1`.
 - `target/` is excluded by `.gitignore` and is not committed.
+
+## Task 2: Dependency Injection and Bean Scopes
+
+### Notifier implementations
+
+`Notifier` defines the `send(to, text)` operation. `EmailNotifier` is the default implementation, while `SmsNotifier` handles urgent messages. `ConsoleNotifier` is active only when the `dev` profile is enabled.
+
+- `@Primary` selects the default notifier when multiple implementations are available.
+- `@Qualifier("smsNotifier")` explicitly injects `SmsNotifier` for urgent messages.
+- `@Profile("dev")` activates `ConsoleNotifier` in development. `EmailNotifier` uses `@Profile("!dev")`, so it is inactive in the `dev` profile.
+
+### Lifecycle callbacks
+
+`EmailNotifier` and `SmsNotifier` use `@PostConstruct` to log when initialized and `@PreDestroy` to log when Spring shuts them down.
+
+### Prototype scope and provider injection
+
+`ReportBuilder` uses `@Scope("prototype")`. `WelcomeService` injects `ObjectProvider<ReportBuilder>` and requests two instances to verify that they are different objects.
+
+### Clock bean and constructor injection
+
+`AppConfig` defines a `Clock` bean. `WelcomeService` receives its dependencies through constructor injection, making its dependencies explicit and allowing a fixed clock to be used in tests.
+
+### Verification
+
+- Default profile: `EmailNotifier` handles Ann's normal welcome message; `SmsNotifier` handles Bob's urgent message.
+- Development profile: `ConsoleNotifier` handles normal messages; `SmsNotifier` handles urgent messages.
+- Prototype check: `prototype instances differ: true`.
+- Tests: `./mvnw test` — **BUILD SUCCESS**, 2 tests, 0 failures, 0 errors.
