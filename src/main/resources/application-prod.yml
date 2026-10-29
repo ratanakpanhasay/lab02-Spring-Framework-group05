@@ -1,0 +1,21 @@
+
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  h2:
+    console:
+      enabled: false
+
+  sql:
+    init:
+      mode: always
+
+logging:
+  level:
+    root: INFO
+    edu.itc.shop: INFO
+    org.springframework.jdbc: INFO
+    org.springframework.transaction: INFO
