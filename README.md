@@ -3,6 +3,7 @@
 Small Spring Boot application built step by step. This README covers **Task 1: Bootstrapping with Maven and Spring Boot**.
 
 ## Project info
+
 - Group / artifact: `edu.itc.se` / `shop`
 - Package: `edu.itc.shop`
 - Build tool: Maven (wrapper `./mvnw`)
@@ -11,15 +12,19 @@ Small Spring Boot application built step by step. This README covers **Task 1: B
 ## Task 1: Bootstrapping
 
 ### What does the `<parent>` give me?
+
 The parent is `spring-boot-starter-parent`. It provides:
+
 - **Dependency management**: a BOM that fixes compatible versions of Spring, Jackson, Tomcat, Hibernate and many other libraries.
 - **Plugin defaults**: pre-configured Maven plugins (compiler, surefire, jar, spring-boot-maven-plugin).
 - **Build settings**: Java version, UTF-8 encoding and resource filtering.
 
 ### Why do the starters have no `<version>`?
+
 The parent's dependency management already defines the version of every starter, so Maven reads the version from there. This keeps all libraries compatible with each other, and I can upgrade everything by changing only the parent version.
 
 ### What does `spring-boot-maven-plugin` do at package time?
+
 It repackages the normal jar into an executable "fat jar". The jar contains my compiled classes, all dependency jars (in `BOOT-INF/lib`) and a launcher class. This is why I can start the application with `java -jar` without installing Tomcat.
 
 ### Dependency tree (first level)
@@ -42,14 +47,17 @@ org.springframework.boot:spring-boot-starter-test:3.4.3:test
 ## Running the application
 
 ### With Maven
+
 ```bash
 ./mvnw spring-boot:run
 curl -i "http://localhost:8080/hello?name=Ann"
 curl http://localhost:8080/actuator/health
 ```
+
 While the app runs, changing the message text in `HelloController` and saving makes DevTools restart the app automatically.
 
 ### As a packaged jar on port 9090
+
 ```bash
 ./mvnw -q package
 java -jar target/shop-0.0.1-SNAPSHOT.jar --server.port=9090
@@ -57,6 +65,7 @@ curl -i "http://localhost:9090/hello?name=Ann"
 ```
 
 Result:
+
 ```
 HTTP/1.1 200
 Content-Type: application/json
@@ -65,11 +74,13 @@ Content-Type: application/json
 ```
 
 Actuator health:
+
 ```
 {"status":"UP"}
 ```
 
 ### Jar size
+
 `target/shop-0.0.1-SNAPSHOT.jar` is about **29 MB** (from `ls -lh target/*.jar`).
 It is much bigger than my own code because it contains embedded Tomcat, Spring MVC, Jackson, H2, JDBC and the other dependencies, so it can run on its own.
 
@@ -92,6 +103,7 @@ DataSourceConfiguration.Hikari matched:
 `DataSourceAutoConfiguration` matched because the JDBC and H2 classes are on the classpath, so Spring Boot configures a `DataSource` automatically without any manual configuration.
 
 ## Git
+
 - Commit after each task.
 - Tag for this task: `task-1`.
 - `target/` is excluded by `.gitignore` and is not committed.
@@ -124,3 +136,51 @@ DataSourceConfiguration.Hikari matched:
 - Development profile: `ConsoleNotifier` handles normal messages; `SmsNotifier` handles urgent messages.
 - Prototype check: `prototype instances differ: true`.
 - Tests: `./mvnw test` — **BUILD SUCCESS**, 2 tests, 0 failures, 0 errors.
+
+## Task 3 — JDBC, JdbcClient and Transactions
+
+### 1. Product Model and Database
+
+Created a `Product` record containing `id`, `name`, `price`, and `stock`. Configured an H2 in-memory database and created the `product` table using `schema.sql`. The table enforces unique product names and prevents negative stock values. Five sample products are inserted through `data.sql`.
+
+### 2. Raw JDBC vs. JdbcClient
+
+Implemented two repository approaches:
+
+- **Raw JDBC:** `RawJdbcProductRepository` uses `DataSource`, `PreparedStatement`, and `ResultSet`, with try-with-resources to close database resources.
+- **JdbcClient:** `ProductRepository` uses Spring's `JdbcClient` for product queries, insertion, stock updates, and deletion.
+
+Line-count comparison:
+
+- Raw JDBC repository: 56 lines.
+- JdbcClient repository: 95 lines.
+
+The JdbcClient implementation reduces manual JDBC resource handling and provides a more concise approach to database operations.
+
+### 3. Transactions and Rollback
+
+Implemented `ProductService.restock()` with `@Transactional`. The service subtracts stock from a source product and adds it to a destination product. If either update fails, an exception causes the transaction to roll back.
+
+The rollback tests verify that:
+
+- A transfer exceeding the source product's available stock leaves both products unchanged.
+- A transfer to a nonexistent destination restores the source product's original stock.
+
+### 4. Testing and Exception Translation
+
+Repository tests use `@JdbcTest` and `@Import(ProductRepository.class)`. Service tests use `@SpringBootTest`.
+
+The tests cover product retrieval, searching, insertion, deletion, stock updates, duplicate product names, and transaction rollback.
+
+A duplicate product name causes a `DuplicateKeyException`. Spring's JDBC exception-translation infrastructure converts the underlying database constraint violation into this Spring data-access exception.
+
+### 5. Test Results
+
+Command: `.\mvnw.cmd clean test`
+
+Result: **BUILD SUCCESS**
+
+- Tests run: 10
+- Failures: 0
+- Errors: 0
+- Skipped: 0
