@@ -20,3 +20,10 @@ logging:
     edu.itc.shop: DEBUG
     org.springframework.jdbc: DEBUG
     org.springframework.transaction: DEBUG
+
+
+management:
+  endpoint:
+    health:
+      show-components: always
+      show-details: always

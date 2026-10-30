@@ -8,7 +8,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
-
+ 
 import edu.itc.shop.service.WelcomeService;
 @SpringBootApplication
 @ConfigurationPropertiesScan
