@@ -3,16 +3,21 @@ package edu.itc.shop.service;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import edu.itc.shop.domain.Product;
 import edu.itc.shop.repository.ProductRepository;
 import edu.itc.shop.web.dto.CreateProduct;
 import edu.itc.shop.web.dto.ProductDto;
 
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 @Service
 public class ProductService {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(ProductService.class);
 
     private final ProductRepository products;
 
@@ -20,8 +25,7 @@ public class ProductService {
         this.products = products;
     }
 
-
-    //search by name
+    // Search by name
     public List<ProductDto> search(String q) {
         if (q == null || q.isBlank()) {
             return products.findAll()
@@ -36,16 +40,16 @@ public class ProductService {
                 .toList();
     }
 
-    //find by id
+    // Find by ID
     public ProductDto findById(long id) {
         return products.findById(id)
                 .map(ProductDto::from)
                 .orElseThrow(() -> new ProductNotFoundException(id));
-                    
     }
 
-    //CRUD------
-    // create product 
+    // CRUD
+
+    // Create product
     public ProductDto create(CreateProduct request) {
         Product product = new Product(
                 null,
@@ -54,27 +58,32 @@ public class ProductService {
                 request.stock()
         );
 
-        long id = products.insert(product); //insert return the id 
+        long id = products.insert(product);
 
-        return findById(id);
+        ProductDto created = findById(id);
+
+        log.info("Product created: id={}, name={}",
+                id, request.name());
+
+        return created;
     }
 
-    //update stock
+    // Update stock
     public ProductDto updateStock(long id, int delta) {
         int updated = products.updateStock(id, delta);
 
         if (updated == 0) {
             if (products.findById(id).isEmpty()) {
-            throw new ProductNotFoundException(id);
-        }
+                throw new ProductNotFoundException(id);
+            }
 
-        throw new InsufficientStockException(id);
+            throw new InsufficientStockException(id);
         }
 
         return findById(id);
     }
-    //delete
-    
+
+    // Delete product
     public void delete(long id) {
         int deleted = products.delete(id);
 
@@ -83,9 +92,7 @@ public class ProductService {
         }
     }
 
-
-
-
+    // Restock products
     @Transactional
     public void restock(long fromId, long toId, int qty) {
         if (qty <= 0) {

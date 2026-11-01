@@ -1,14 +1,17 @@
 
 package edu.itc.shop.web;
 
-import org.springframework.web.bind.annotation.RestControllerAdvice;
-import edu.itc.shop.service.ProductNotFoundException;
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import edu.itc.shop.service.InsufficientStockException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import java.util.List;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
+
+import edu.itc.shop.service.InsufficientStockException;
+import edu.itc.shop.service.ProductNotFoundException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -61,6 +64,19 @@ public class ApiExceptionHandler {
         return problem;
     }
 
+
+        // Handle missing resources (404)
+    @ExceptionHandler(NoResourceFoundException.class)
+        public ProblemDetail handleMissingResource(NoResourceFoundException ex) {
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.NOT_FOUND,
+                "The requested resource was not found"
+    );
+
+    problem.setTitle("Not Found");
+    return problem;
+}
     //Handle 500 Internal Server Error
     
     @ExceptionHandler(Exception.class)

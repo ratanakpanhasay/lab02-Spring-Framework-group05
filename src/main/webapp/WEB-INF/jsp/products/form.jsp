@@ -41,9 +41,8 @@
 </head>
 <body>
     <h1>Add Product</h1>
-
     <form action="${pageContext.request.contextPath}/products"
-          method="post">
+      method="post" novalidate>
 
         <label for="name">Product name</label>
         <input id="name" name="name" type="text" maxlength="80"

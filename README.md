@@ -184,3 +184,118 @@ Result: **BUILD SUCCESS**
 - Failures: 0
 - Errors: 0
 - Skipped: 0
+
+
+## Task 4 — REST API, Validation and Exception Handling
+
+### 1. REST API Endpoints
+
+Implemented REST endpoints using `ProductController`.
+
+- `GET /api/products` — Returns all products, with optional search parameter `q`.
+- `GET /api/products/{id}` — Returns a product by ID.
+- `POST /api/products` — Creates a product using JSON request data.
+
+### 2. DTOs and Validation
+
+Implemented `CreateProduct` for incoming requests and `ProductDto` for API responses.
+
+Used Jakarta Bean Validation annotations:
+
+- `@NotBlank` — Requires a non-empty product name.
+- `@Size(max = 80)` — Limits the product name to 80 characters.
+- `@NotNull` — Requires a value to be provided.
+- `@DecimalMin("0.01")` — Requires a price of at least 0.01.
+- `@PositiveOrZero` — Prevents negative stock values.
+
+### 3. Exception Handling
+
+Implemented `ApiExceptionHandler` using `@RestControllerAdvice`.
+
+- HTTP 400 — Invalid request data.
+- HTTP 404 — Product not found or requested resource missing.
+- HTTP 409 — Insufficient stock.
+- HTTP 500 — Unexpected server errors.
+
+Error responses use Spring's `ProblemDetail` format.
+
+### 4. Service and Repository Integration
+
+`ProductController` delegates business logic to `ProductService`, which communicates with `ProductRepository` for database operations.
+
+This separates HTTP request handling, business logic, and database access.
+
+### 5. Verification
+
+REST API functionality was implemented and included in the project's Maven verification process.
+
+
+## Task 5 — Web UI, Configuration, Logging and Monitoring
+
+### 1. JSP Web Interface
+
+Implemented a server-rendered product interface using Spring MVC and JSP.
+
+- `GET /products` displays the product list.
+- `GET /products/new` displays the product creation form.
+- `POST /products` processes the form submission.
+- Server-side validation checks submitted product data.
+- Flash messages provide feedback after successful product creation.
+
+### 2. Development and Production Profiles
+
+Created `application-dev.yml` and `application-prod.yml` to separate environment-specific settings.
+
+**Development profile:**
+- Uses an H2 in-memory database.
+- Enables the H2 Console at `/h2-console/`.
+- Enables DEBUG logging for application and JDBC operations.
+
+**Production profile:**
+- Reads database connection settings from environment variables.
+- Disables the H2 Console.
+- Uses INFO logging to reduce unnecessary log output.
+
+Production profile behavior was tested using a temporary H2 database.
+
+### 3. Application Configuration and Health Monitoring
+
+Implemented `ShopProperties` to manage application configuration, including currency, tax rate, and low-stock threshold.
+
+Implemented `LowStockHealthIndicator` for custom health monitoring.
+
+Verified the Actuator health endpoint at `/actuator/health`, which returned `UP` during testing.
+
+### 4. Request Logging and AOP Timing
+
+Implemented `RequestIdFilter` to generate a request ID and store it in the logging MDC.
+
+Added:
+- INFO logging for successful product creation.
+- WARN logging for invalid product form submissions.
+- `TimingAspect` using Spring AOP to measure public service method execution time in microseconds.
+
+Verified that the timing logs could be enabled and disabled dynamically through the Actuator loggers endpoint without restarting the application.
+
+### 5. Development and Production Verification
+
+**Development:**
+- Successfully opened the H2 Console.
+- Connected to the `shop` in-memory database.
+- Executed `SELECT * FROM PRODUCT;`.
+- Confirmed that five sample products were present.
+
+**Production:**
+- Confirmed that `/h2-console/` was unavailable.
+- Added handling for `NoResourceFoundException` so missing resources return HTTP 404 instead of HTTP 500.
+- Verified the HTTP 404 response.
+
+### 6. Build Verification
+
+Command:
+
+```powershell
+.\mvnw.cmd clean verify
+```
+
+Result: **BUILD SUCCESS**.

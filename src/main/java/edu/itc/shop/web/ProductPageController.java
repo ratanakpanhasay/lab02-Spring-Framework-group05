@@ -1,6 +1,8 @@
 
 package edu.itc.shop.web;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -18,6 +20,9 @@ import jakarta.validation.Valid;
 @Controller
 @RequestMapping("/products")
 public class ProductPageController {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(ProductPageController.class);
 
     private final ProductService service;
 
@@ -54,6 +59,10 @@ public class ProductPageController {
             RedirectAttributes redirectAttributes) {
 
         if (bindingResult.hasErrors()) {
+
+            log.warn("Product validation failed: {}",
+                    bindingResult.getAllErrors());
+
             model.addAttribute("errors", bindingResult);
             return "products/form";
         }
