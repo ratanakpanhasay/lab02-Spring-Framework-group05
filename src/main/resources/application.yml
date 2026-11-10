@@ -1,36 +1,22 @@
 spring:
   datasource:
-    url: "jdbc:h2:mem:shop;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE"
+    url: jdbc:h2:mem:shop;DB_CLOSE_DELAY=-1
     username: sa
-    password:
-    driver-class-name: org.h2.Driver
+    password: ""
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        generate_statistics: true
 
   h2:
     console:
       enabled: true
-      path: /h2-console
-
-  sql:
-    init:
-      mode: always
-
-  mvc:
-    view:
-      prefix: /WEB-INF/jsp/
-      suffix: .jsp
 
 logging:
   level:
-    org.springframework.jdbc: DEBUG
-    org.springframework.transaction: DEBUG
-
-shop:
-  currency: USD
-  tax-rate: 0.10
-  low-stock-threshold: 5
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,loggers
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
