@@ -74,6 +74,12 @@ public class Order {
         this.customer = customer;
     }
 
+    public Order(Customer customer, OrderStatus status, Instant placedAt) {
+        this(customer);
+        this.status = java.util.Objects.requireNonNull(status, "Status cannot be null");
+        this.placedAt = java.util.Objects.requireNonNull(placedAt, "Placed at cannot be null");
+    }
+
     public Long getId() {
         return id;
     }

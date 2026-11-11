@@ -3,6 +3,7 @@ package edu.itc.shop.domain;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 import edu.itc.shop.domain.enums.Category;
 import jakarta.persistence.AttributeOverride;
@@ -40,6 +41,12 @@ public class Product {
     @Column(name = "name", length = 150, nullable = false)
     private String name;
 
+    @Column(name = "sku", length = 64, nullable = false, unique = true)
+    private String sku;
+
+    @Column(name = "stock", nullable = false)
+    private int stock;
+
     @Embedded
     @AttributeOverrides({
         @AttributeOverride(
@@ -68,6 +75,18 @@ public class Product {
     }
 
     public Product(String name, Money price, Category category) {
+        this("AUTO-" + UUID.randomUUID(), name, price, category, 0);
+    }
+
+    public Product(String sku, String name, Money price, Category category, int stock) {
+        if (sku == null || sku.isBlank() || sku.length() > 64) {
+            throw new IllegalArgumentException("SKU must contain 1-64 characters");
+        }
+        if (stock < 0) {
+            throw new IllegalArgumentException("Stock cannot be negative");
+        }
+        this.sku = sku;
+        this.stock = stock;
         this.name = name;
         this.price = price;
         this.category = category;
@@ -79,6 +98,14 @@ public class Product {
 
     public String getName() {
         return name;
+    }
+
+    public String getSku() {
+        return sku;
+    }
+
+    public int getStock() {
+        return stock;
     }
 
     public Money getPrice() {
