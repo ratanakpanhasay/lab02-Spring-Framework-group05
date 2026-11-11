@@ -7,6 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Column;
 
 @Entity 
 @Table (name = "order_line")
@@ -26,6 +27,7 @@ public class OrderLine {
     )
     private Long id;
 
+    @Column(name = "quantity", nullable = false)
     private Integer quantity;
 
     protected OrderLine() {

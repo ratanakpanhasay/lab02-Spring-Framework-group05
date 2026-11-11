@@ -31,6 +31,7 @@ public class Product {
     )
     private Long id;
 
+    @Column(name = "name", length = 150, nullable = false)
     private String name;
 
     @Embedded

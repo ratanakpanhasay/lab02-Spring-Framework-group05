@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+import jakarta.persistence.Column;
 
 @Entity
 @Table(name = "customer")
@@ -24,8 +25,10 @@ public class Customer {
     )
     private Long id;
 
+    @Column(name = "name", length = 150, nullable = false)
     private String name;
 
+    @Column(name = "email", length = 255, nullable = false, unique = true)
     private String email;
 
     @Embedded

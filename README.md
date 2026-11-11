@@ -143,31 +143,45 @@ Flyway creates the database schema, and Hibernate validates the entity mappings 
 
 The following tests were implemented:
 
-- Verify Money embedded values are persisted correctly.
-- Verify enum values are persisted as strings.
-- Verify Flyway migration and Hibernate schema validation.
+- `embeddedMoneyIsPersisted()` — Verifies that embedded Money values are persisted and retrieved correctly.
+- `enumCategoryIsSavedAsString()` — Verifies that the Category enum is stored as a string in the database.
+- `embeddedAddressIsPersisted()` — Verifies that embedded Address values are persisted and retrieved correctly.
+
+Additionally, `ShopJpaApplicationTests.contextLoads()` verifies successful application context initialization. With Flyway enabled and Hibernate configured with `ddl-auto=validate`, application startup also exercises schema validation.
+
+All four tests passed after restoring the original mappings. The two schema mismatch experiments separately confirmed that Hibernate detects missing columns and incompatible column types.
 
 ### 6. Schema Mismatch Experiment 1 — Column Name
 
 **Objective:** Demonstrate that Hibernate detects a mismatch between the entity mapping and database column name.
 
-- Original configuration:
-- Experimental change:
-- Observed error:
-- Explanation:
-- Fix:
+- **Original configuration:** The `Product` entity defines a Java field `private String name;`, which maps to the `name` column in the `product` table created by `V1__init.sql`.
+- **Experimental change:** Temporarily added `@Column(name = "product_name")` above the `name` field in `Product.java`, without modifying `V1__init.sql`.
+- **Observed error:** Running `mvn clean verify` produced `BUILD FAILURE` (4 tests run, 0 assertion failures, 4 errors). Hibernate reported:
+
+  ```text
+  org.hibernate.tool.schema.spi.SchemaManagementException: Schema validation: missing column [product_name] in table [product]
+  ```
+
+- **Explanation:** Flyway created the table with a `name` column, but Hibernate expected a `product_name` column because of the temporary JPA annotation. With Hibernate DDL mode set to `validate`, schema validation failed while initializing the JPA `EntityManagerFactory`, preventing the test application contexts from loading.
+- **Fix:** Removed the temporary `@Column(name = "product_name")` annotation and restored the original `name` field mapping. Ran `mvn clean verify` again and confirmed `BUILD SUCCESS`.
 
 ### 7. Schema Mismatch Experiment 2 — Column Type
 
 **Objective:** Demonstrate that Hibernate detects a mismatch between the entity field type and database column type.
 
-- Original configuration:
-- Experimental change:
-- Observed error:
-- Explanation:
-- Fix:
+- **Original configuration:** `Product.java` defines `name` as a Java `String`; `V1__init.sql` defines the corresponding column as `name VARCHAR(150) NOT NULL`.
+- **Experimental change:** Temporarily changed the column in `V1__init.sql` to `name INTEGER NOT NULL`, without changing `Product.java`.
+- **Observed error:** Running `mvn clean verify` produced `BUILD FAILURE` (4 tests run, 0 assertion failures, 4 errors). Hibernate reported:
 
-**Important:** Both experimental changes were reverted after testing.
+  ```text
+  org.hibernate.tool.schema.spi.SchemaManagementException: Schema validation: wrong column type encountered in column [name] in table [product]; found [integer (Types#INTEGER)], but expecting [varchar(255) (Types#VARCHAR)]
+  ```
+
+- **Explanation:** Flyway created the column with SQL type `INTEGER`, whereas Hibernate expected a `VARCHAR` type for the Java `String` field. The type mismatch was detected during Hibernate schema validation, so the JPA `EntityManagerFactory` could not initialize and the application context tests errored.
+- **Fix:** Restored the migration column to `name VARCHAR(150) NOT NULL`. Ran `mvn clean verify` again and confirmed `BUILD SUCCESS`.
+
+**Important:** Both experimental changes were reverted after testing. The final project retains the original entity mapping and Flyway migration.
 
 ### 8. How to Run
 

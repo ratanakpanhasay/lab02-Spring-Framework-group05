@@ -25,7 +25,7 @@ public class Tag {
 
     private Long id;
 
-    @Column (nullable = false, unique = true)
+    @Column(name = "name", length = 100, nullable = false, unique = true)
     private String name;
 
     protected Tag() {

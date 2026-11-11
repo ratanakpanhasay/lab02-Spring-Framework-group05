@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+import jakarta.persistence.Column;
 
 @Entity 
 @Table (name = "orders")
@@ -29,7 +30,8 @@ public class Order {
 
     private Long id;
 
-    @Enumerated (EnumType.STRING)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", length = 20, nullable = false)
     private OrderStatus status;
 
     protected Order() {
