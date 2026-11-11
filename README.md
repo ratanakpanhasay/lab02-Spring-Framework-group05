@@ -207,3 +207,139 @@ Run the application:
 
 Task 1 implementation and testing are completed after all acceptance criteria pass.
 
+
+## Task 2 — Associations, Cascading and Entity Identity
+
+### 1. Implementation
+
+Implemented the following relationships:
+
+- Order–OrderLine: bidirectional one-to-many / many-to-one.
+- Product–Tag: bidirectional many-to-many.
+
+### 2. Order Aggregate Root
+
+The Order entity manages its order lines through:
+
+- `addLine(Product product, int quantity)` — Adds a line, sets the owning side, and copies the product's current price.
+- `removeLine(OrderLine line)` — Removes a line and updates the relationship.
+- `getLines()` — Returns a read-only view.
+- `total()` — Calculates the total order amount.
+
+Configured:
+
+- `cascade = CascadeType.ALL`
+- `orphanRemoval = true`
+
+### 3. Product–Tag Relationship
+
+- Product owns the relationship through `@JoinTable`.
+- Tag uses `mappedBy = "tags"` as the inverse side.
+- `Product.tag(Tag tag)` maintains both sides.
+- Join table: `product_tag`.
+
+### 4. Entity Identity
+
+Implemented `equals()`, `hashCode()`, and `toString()` for all five entities:
+
+- Customer
+- Product
+- Tag
+- Order
+- OrderLine
+
+Entity equality is based on the same entity class and the same non-null database identifier.
+
+The hash code remains stable before and after persistence.
+
+The `toString()` methods use scalar fields only and exclude entity relationships to prevent recursive calls and unexpected lazy loading.
+
+### 5. Tests
+
+Created:
+
+- `OrderCascadeTest`
+- `EntityIdentityTest`
+
+Existing tests:
+
+- `ShopJpaApplicationTests`
+- `ProductMappingTest`
+
+All tests passed.
+
+### 6. Order Cascade SQL Evidence
+
+The `OrderCascadeTest` confirmed the following SQL operations.
+
+**Initial persistence:**
+
+- One INSERT into `orders`.
+- Two INSERTs into `order_line`.
+- No UPDATE statements during initial order persistence.
+
+**Orphan removal:**
+
+When one order line is removed, Hibernate executes:
+
+```sql
+delete from order_line where id=?
+```
+
+**Cascade remove:**
+
+When the order is deleted, Hibernate deletes its remaining line first, followed by the order:
+
+```sql
+delete from order_line where id=?
+delete from orders where id=? and version=?
+```
+
+The test verifies that no order lines remain after deleting the order.
+
+### 7. Entity Identity Test
+
+The `EntityIdentityTest` verifies that:
+
+- A Product remains findable in a HashSet after persistence.
+- Reloading the Product creates a different Java object.
+- The original and reloaded objects are equal.
+- The hash code remains stable after persistence.
+
+### 8. toString() Recursion Experiment
+
+**Objective:** Demonstrate the problem caused by including bidirectional relationships in entity `toString()` methods.
+
+**Experimental changes:**
+
+1. Temporarily included `lines` in `Order.toString()`.
+2. Temporarily included `order` in `OrderLine.toString()`.
+3. Called `toString()` on an order.
+
+**Observed result:**
+
+The two methods recursively called each other until Java threw a `StackOverflowError`. This behavior was verified using a JUnit test with:
+
+```java
+assertThrows(StackOverflowError.class, order::toString);
+```
+
+**Solution:**
+
+Restored both methods to use scalar fields only, excluding entity relationships.
+
+**Conclusion:**
+
+Entity relationships should generally be excluded from `toString()` to avoid infinite recursion and unexpected lazy loading.
+
+### 9. Task 2 Verification
+
+Run the complete test suite:
+
+```bash
+./mvnw clean test
+```
+
+**Result:** BUILD SUCCESS.
+
+Task 2 implementation and verification are completed.

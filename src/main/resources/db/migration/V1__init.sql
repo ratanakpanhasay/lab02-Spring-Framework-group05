@@ -37,16 +37,20 @@ CREATE TABLE tag (
 );
 
 CREATE TABLE orders (
-    id          BIGINT      PRIMARY KEY,
-    status      VARCHAR(20) NOT NULL,
-    customer_id BIGINT      REFERENCES customer(id)
+    id BIGINT PRIMARY KEY,
+    status VARCHAR(20) NOT NULL,
+    placed_at TIMESTAMP NOT NULL,
+    version BIGINT NOT NULL,
+    customer_id BIGINT NOT NULL REFERENCES customer(id)
 );
 
 CREATE TABLE order_line (
-    id         BIGINT PRIMARY KEY,
-    order_id   BIGINT NOT NULL REFERENCES orders(id),
+    id BIGINT PRIMARY KEY,
+    order_id BIGINT NOT NULL REFERENCES orders(id),
     product_id BIGINT NOT NULL REFERENCES product(id),
-    quantity   INT    NOT NULL CHECK (quantity > 0)
+    quantity INT NOT NULL CHECK (quantity > 0),
+    unit_price_amount DECIMAL(19,2) NOT NULL,
+    unit_price_currency VARCHAR(3) NOT NULL
 );
 
 CREATE TABLE product_tag (
