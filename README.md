@@ -1,4 +1,4 @@
-# Shop JPA
+﻿# Shop JPA
 
 Spring Boot backend project for managing an online shop using Spring Data JPA and Hibernate.
 
@@ -73,7 +73,7 @@ Flyway migration files are stored in:
 - Task 4: Transactions, dirty checking and optimistic locking
 - Task 5: Performance optimization and database migrations
 
-# LAB 03 — SHOP JPA
+# LAB 03 â€” SHOP JPA
 
 ## Project Information
 
@@ -86,7 +86,7 @@ Flyway migration files are stored in:
 - **Java:** 25
 - **Spring Boot:** 4.1.1
 
-## Task 1 — Entities and Mappings
+## Task 1 â€” Entities and Mappings
 
 **Responsible Member:** Member 1
 
@@ -144,15 +144,15 @@ Flyway creates the database schema, and Hibernate validates the entity mappings 
 
 The following tests were implemented:
 
-- `embeddedMoneyIsPersisted()` — Verifies that embedded Money values are persisted and retrieved correctly.
-- `enumCategoryIsSavedAsString()` — Verifies that the Category enum is stored as a string in the database.
-- `embeddedAddressIsPersisted()` — Verifies that embedded Address values are persisted and retrieved correctly.
+- `embeddedMoneyIsPersisted()` â€” Verifies that embedded Money values are persisted and retrieved correctly.
+- `enumCategoryIsSavedAsString()` â€” Verifies that the Category enum is stored as a string in the database.
+- `embeddedAddressIsPersisted()` â€” Verifies that embedded Address values are persisted and retrieved correctly.
 
 Additionally, `ShopJpaApplicationTests.contextLoads()` verifies successful application context initialization. With Flyway enabled and Hibernate configured with `ddl-auto=validate`, application startup also exercises schema validation.
 
 All four tests passed after restoring the original mappings. The two schema mismatch experiments separately confirmed that Hibernate detects missing columns and incompatible column types.
 
-### 6. Schema Mismatch Experiment 1 — Column Name
+### 6. Schema Mismatch Experiment 1 â€” Column Name
 
 **Objective:** Demonstrate that Hibernate detects a mismatch between the entity mapping and database column name.
 
@@ -167,7 +167,7 @@ All four tests passed after restoring the original mappings. The two schema mism
 - **Explanation:** Flyway created the table with a `name` column, but Hibernate expected a `product_name` column because of the temporary JPA annotation. With Hibernate DDL mode set to `validate`, schema validation failed while initializing the JPA `EntityManagerFactory`, preventing the test application contexts from loading.
 - **Fix:** Removed the temporary `@Column(name = "product_name")` annotation and restored the original `name` field mapping. Ran `mvn clean verify` again and confirmed `BUILD SUCCESS`.
 
-### 7. Schema Mismatch Experiment 2 — Column Type
+### 7. Schema Mismatch Experiment 2 â€” Column Type
 
 **Objective:** Demonstrate that Hibernate detects a mismatch between the entity field type and database column type.
 
@@ -209,30 +209,30 @@ Run the application:
 Task 1 implementation and testing are completed after all acceptance criteria pass.
 
 
-## Task 2 — Associations, Cascading and Entity Identity
+## Task 2 â€” Associations, Cascading and Entity Identity
 
 ### 1. Implementation
 
 Implemented the following relationships:
 
-- Order–OrderLine: bidirectional one-to-many / many-to-one.
-- Product–Tag: bidirectional many-to-many.
+- Orderâ€“OrderLine: bidirectional one-to-many / many-to-one.
+- Productâ€“Tag: bidirectional many-to-many.
 
 ### 2. Order Aggregate Root
 
 The Order entity manages its order lines through:
 
-- `addLine(Product product, int quantity)` — Adds a line, sets the owning side, and copies the product's current price.
-- `removeLine(OrderLine line)` — Removes a line and updates the relationship.
-- `getLines()` — Returns a read-only view.
-- `total()` — Calculates the total order amount.
+- `addLine(Product product, int quantity)` â€” Adds a line, sets the owning side, and copies the product's current price.
+- `removeLine(OrderLine line)` â€” Removes a line and updates the relationship.
+- `getLines()` â€” Returns a read-only view.
+- `total()` â€” Calculates the total order amount.
 
 Configured:
 
 - `cascade = CascadeType.ALL`
 - `orphanRemoval = true`
 
-### 3. Product–Tag Relationship
+### 3. Productâ€“Tag Relationship
 
 - Product owns the relationship through `@JoinTable`.
 - Tag uses `mappedBy = "tags"` as the inverse side.
@@ -345,7 +345,7 @@ Run the complete test suite:
 
 Task 2 implementation and verification are completed.
 
-## Task 3 — Repositories, Queries, Projections and REST APIs
+## Task 3 â€” Repositories, Queries, Projections and REST APIs
 
 Implemented and verified on `task-3` on 2026-11-11 using Java 25, Maven 3.10.0,
 Spring Boot 4.1.1, Spring Data JPA 4.1.1, Hibernate 7.4.5.Final and H2 2.4.240.
@@ -432,7 +432,7 @@ The inspected Task 2 `Product` and V1 schema had neither SKU nor stock. The new
   `LEGACY-<id>` values, so the migration works on populated V1 databases.
 - `stock INT DEFAULT 0 NOT NULL`, with a database `CHECK (stock >= 0)` constraint.
 
-`V1__init.sql` is unchanged. Flyway orders the migrations as **V1 → V1.1 → V2**.
+`V1__init.sql` is unchanged. Flyway orders the migrations as **V1 â†’ V1.1 â†’ V2**.
 Version 2 remains reserved for Task 5; no V2 migration exists on this branch.
 Integrate V1.1 before applying the future V2 migration. The normal Flyway ordering
 and validation settings remain enabled; out-of-order migration is not enabled.
@@ -456,7 +456,7 @@ mappings and VARCHAR schema already support them, so no enum-column migration is
 
 `DataSeeder` is a `@Component`, `@Profile("dev")`, transactional `ApplicationRunner`.
 On a fresh database it inserts 3 customers, 12 products (each with two shared tags),
-30 orders and 90 lines (2–4 per order), with all six order statuses represented.
+30 orders and 90 lines (2â€“4 per order), with all six order statuses represented.
 The fixture names are Dara, Sophea and Sokha; their emails are `<name>@example.com`.
 Three products have zero stock. Times are fixed from `2026-01-01T00:00:00Z` so the
 pagination examples are reproducible.
@@ -573,7 +573,7 @@ Actual HTTP results (all HTTP 200, complete bodies in `api-session.md`):
 | `/api/products?q=key&category=HARDWARE&maxPrice=60&inStock=true` | Mechanical Keyboard (`DEV-001`, 55.00, stock 5) and USB Keyboard (`DEV-002`, 25.00, stock 6). |
 | Same product filter with `page=1&size=1` | USB Keyboard; total 2 across 2 pages. |
 | `/api/products?inStock=false` | 3 zero-stock product DTOs. |
-| `/api/customers/dara@example.com/orders` | 10 complete orders with 2–4 lines each and calculated totals. |
+| `/api/customers/dara@example.com/orders` | 10 complete orders with 2â€“4 lines each and calculated totals. |
 | `/api/customers/missing@example.com/orders` | Empty list. |
 
 Actual SQL excerpts from the build/application logs follow. The fetch join loads
@@ -641,3 +641,166 @@ no staged changes. V1, the Maven dependencies, application settings and the exis
 tests are unchanged. Nothing has been committed or pushed.
 
 Suggested commit message: `feat: implement lab03 task 3 repositories and REST APIs`
+
+---
+
+## Task 4 — Transactions, Dirty Checking and Optimistic Locking
+
+**Responsible Member:** Member 5
+
+### 1. Managed Entities and Dirty Checking
+
+Implemented transactional order status updates in `OrderService`.
+
+The `markPaid()` and `changeStatus()` methods retrieve an Order through `OrderRepository` and modify its status using `changeStatus()`.
+
+No explicit `save()` call is required after modifying a managed entity. Hibernate detects the change through dirty checking and generates an UPDATE statement when the transaction is flushed or committed.
+
+**Verification:** `OrderServiceTest` verifies that changing an order status through the service persists the new status.
+
+### 2. Detached Entities and Merge
+
+Implemented a detached entity experiment in `ProductDetachedEntityTest`.
+
+The test:
+- Creates and saves a Product.
+- Loads the Product outside a surrounding transaction.
+- Changes its stock from 10 to 99.
+- Reloads the Product and confirms that the database still contains 10.
+- Calls `products.save(p)` to merge the detached entity.
+- Reloads the Product and confirms that the stock is now 99.
+
+Spring Data JPA uses the merge operation for an existing detached entity when saving it.
+
+**Verification:** `ProductDetachedEntityTest` passed.
+
+### 3. Read-Only Transactions
+
+Implemented `OrderService.view()` with `@Transactional(readOnly = true)`.
+
+The method retrieves a managed Order, deliberately attempts to change its status to CANCELLED, and returns an `OrderDto`.
+
+`ReadOnlyTransactionTest` verifies two different results:
+- The returned DTO contains CANCELLED.
+- A fresh database read still contains PENDING.
+
+This demonstrates the read-only transaction behavior with the current Hibernate configuration. Read-only transactions are an optimization and should not be treated as a universal write-protection mechanism.
+
+**Verification:** `ReadOnlyTransactionTest` passed.
+
+### 4. Flush Ordering and Constraint Violations
+
+Implemented `FlushOrderingTest` using the unique constraint on `Tag.name`.
+
+Two scenarios are tested:
+
+**Without an explicit flush:**
+- Delete an existing Tag.
+- Schedule insertion of another Tag with the same name.
+- Flush the persistence context.
+- Verify that the unique constraint violation is detected.
+
+**With an explicit flush:**
+- Delete the existing Tag.
+- Call `tags.flush()` to execute the DELETE.
+- Insert a replacement Tag with the same name.
+- Verify that the replacement is successfully persisted.
+
+The experiment demonstrates that Hibernate's SQL execution order is not necessarily the same as the order of Java method calls. Explicit flushing can be necessary when database constraints depend on statement ordering.
+
+**Verification:** Both `FlushOrderingTest` scenarios passed.
+
+### 5. Optimistic Locking with Concurrent Transactions
+
+The Order entity uses:
+
+`@Version private long version;`
+
+This version field allows Hibernate to detect concurrent modifications.
+
+`OptimisticLockingTest` uses two real threads and a `CountDownLatch` to ensure both transactions load the same Order version before attempting updates.
+
+The test verifies:
+- Both transactions load the same version.
+- Both attempt to change the Order status.
+- One transaction successfully updates the record.
+- The competing transaction receives an `ObjectOptimisticLockingFailureException`.
+- The version increases exactly once.
+
+The test also verifies that the final status is either PAID or CANCELLED, depending on which transaction succeeds.
+
+**Verification:** `OptimisticLockingTest` passed.
+
+### 6. Retry Recovery with OrderFacade
+
+Implemented `OrderFacade` separately from `OrderService`.
+
+The facade calls `OrderService.changeStatus()` and catches `ObjectOptimisticLockingFailureException`.
+
+It retries the complete service transaction, with a maximum of three attempts and a short increasing back-off delay.
+
+The separation is important because the exception may occur during transaction commit, after the service method has executed.
+
+`OrderFacadeTest` verifies two scenarios:
+
+- Two failures followed by a successful third attempt.
+- Three consecutive failures followed by propagation of the exception.
+
+**Verification:** Both `OrderFacadeTest` scenarios passed.
+
+### 7. SQL and Transaction Logging
+
+Enabled Hibernate SQL and parameter logging in `application.yml`:
+
+- `org.hibernate.SQL: DEBUG`
+- `org.hibernate.orm.jdbc.bind: TRACE`
+- `hibernate.generate_statistics: true`
+
+Also enabled Spring transaction logging:
+
+- `org.springframework.transaction: TRACE`
+- `org.springframework.orm.jpa.JpaTransactionManager: DEBUG`
+
+The captured evidence is saved in:
+
+`task4-optimistic-locking.log`
+
+The actual concurrency log shows two UPDATE statements containing the version condition:
+
+```sql
+update orders
+set customer_id=?, placed_at=?, status=?, version=?
+where id=? and version=?
+```
+
+The log also confirms that one transaction rolled back after the optimistic locking exception.
+
+The successful concurrency test result was:
+
+```text
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
+
+### 8. Task 4 Test Summary
+
+| Test class | Verification |
+| --- | --- |
+| OrderServiceTest | Dirty checking |
+| ProductDetachedEntityTest | Detached entity and merge |
+| ReadOnlyTransactionTest | Read-only transaction |
+| FlushOrderingTest | Flush ordering and unique constraints |
+| OptimisticLockingTest | Concurrent updates and optimistic locking |
+| OrderFacadeTest | Retry and failure handling |
+
+All six Task 4 test classes were executed individually and reported successful results during implementation.
+
+### 9. Conclusion
+
+Task 4 demonstrates how Spring transactions and Hibernate persistence-context behavior affect database updates.
+
+The implementation covers managed and detached entities, dirty checking, read-only transactions, explicit flushing, optimistic locking and retry recovery.
+
+The concurrency experiment confirms that version checking prevents lost updates when multiple transactions attempt to modify the same Order.
+
+

@@ -84,6 +84,10 @@ public class Order {
         return id;
     }
 
+    public long getVersion() {
+    return version;
+    }
+
     public Customer getCustomer() {
         return customer;
     }
@@ -91,6 +95,13 @@ public class Order {
     public OrderStatus getStatus() {
         return status;
     }
+
+    public void changeStatus(OrderStatus newStatus) {
+    this.status = java.util.Objects.requireNonNull(
+            newStatus,
+            "Status cannot be null"
+    );
+}
 
     public Instant getPlacedAt() {
         return placedAt;

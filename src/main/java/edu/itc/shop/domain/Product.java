@@ -108,6 +108,16 @@ public class Product {
         return stock;
     }
 
+    public void changeStock(int newStock) {
+    if (newStock < 0) {
+        throw new IllegalArgumentException(
+                "Stock cannot be negative"
+        );
+    }
+
+    this.stock = newStock;
+}
+
     public Money getPrice() {
         return price;
     }
