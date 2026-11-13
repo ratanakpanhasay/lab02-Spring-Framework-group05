@@ -1,3 +1,4 @@
+
 spring:
   datasource:
     url: jdbc:h2:mem:shop;DB_CLOSE_DELAY=-1
@@ -20,3 +21,6 @@ logging:
   level:
     org.hibernate.SQL: DEBUG
     org.hibernate.orm.jdbc.bind: TRACE
+    org.hibernate.engine.transaction: DEBUG
+    org.springframework.transaction: TRACE
+    org.springframework.orm.jpa.JpaTransactionManager: DEBUG
