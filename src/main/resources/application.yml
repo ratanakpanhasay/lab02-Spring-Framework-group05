@@ -12,6 +12,10 @@ spring:
     properties:
       hibernate:
         generate_statistics: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
 
   h2:
     console:
@@ -24,3 +28,5 @@ logging:
     org.hibernate.engine.transaction: DEBUG
     org.springframework.transaction: TRACE
     org.springframework.orm.jpa.JpaTransactionManager: DEBUG
+    org.hibernate.engine.internal.StatisticalLoggingSessionEventListener: INFO
+    

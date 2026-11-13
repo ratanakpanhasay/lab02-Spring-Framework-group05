@@ -21,7 +21,7 @@ class ProductSchemaMigrationTest {
                            (2, 'Another existing product', 20.00, 'USD', 'BOOK')
                     """);
             var result = Flyway.configure().dataSource(url, "sa", "").load().migrate();
-            assertThat(result.migrationsExecuted).isEqualTo(1);
+            assertThat(result.migrationsExecuted).isEqualTo(2);
             try (var rows = sql.executeQuery("select sku, stock from product order by id")) {
                 assertThat(rows.next()).isTrue();
                 assertThat(rows.getString("sku")).isEqualTo("LEGACY-1");

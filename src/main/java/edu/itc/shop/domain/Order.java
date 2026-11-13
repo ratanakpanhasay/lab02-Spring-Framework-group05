@@ -23,6 +23,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import org.hibernate.annotations.BatchSize;
 
 @Entity
 @Table(name = "orders")
@@ -54,11 +55,13 @@ public class Order {
     @Version
     private long version;
 
+    
     @OneToMany(
         mappedBy = "order",
         cascade = CascadeType.ALL,
         orphanRemoval = true
     )
+    @BatchSize(size = 2)
     private List<OrderLine> lines = new ArrayList<>();
 
     protected Order() {

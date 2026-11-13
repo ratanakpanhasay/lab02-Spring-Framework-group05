@@ -1,9 +1,7 @@
 ﻿# Shop JPA
-
 Spring Boot backend project for managing an online shop using Spring Data JPA and Hibernate.
 
 ## Technology Stack
-
 - Java 25
 - Spring Boot 4.1.1
 - Maven
@@ -15,7 +13,6 @@ Spring Boot backend project for managing an online shop using Spring Data JPA an
 - Flyway Database Migration
 
 ## Project Setup
-
 The project uses Maven Wrapper.
 
 Verify Java:
@@ -43,7 +40,6 @@ Run the application:
 ```
 
 ## Database Configuration
-
 - Database: H2 in-memory database
 - Database URL: jdbc:h2:mem:shop
 - Schema management: Flyway
@@ -55,17 +51,15 @@ H2 Console:
 http://localhost:8080/h2-console
 
 ## Database Migrations
-
 Flyway migration files are stored in:
 
 `src/main/resources/db/migration/`
 
 - V1__init.sql: Initial database schema
 - V1_1__product_sku_stock.sql: Task 3 product SKU and stock support
-- V2__indexes.sql: Reserved for Task 5 database indexes (not present on this branch)
+- V2__indexes.sql: Task 5 performance indexes (three composite indexes; applied successfully)
 
 ## Project Tasks
-
 - Setup (S0)
 - Task 1: Entities and mappings
 - Task 2: Associations, cascading and entity identity
@@ -73,10 +67,8 @@ Flyway migration files are stored in:
 - Task 4: Transactions, dirty checking and optimistic locking
 - Task 5: Performance optimization and database migrations
 
-# LAB 03 â€” SHOP JPA
-
+# LAB 03 — SHOP JPA
 ## Project Information
-
 - **Project:** Shop JPA
 - **Repository:** lab02-Spring-Framework-group05
 - **Integration Branch:** lab03
@@ -86,12 +78,10 @@ Flyway migration files are stored in:
 - **Java:** 25
 - **Spring Boot:** 4.1.1
 
-## Task 1 â€” Entities and Mappings
-
+## Task 1 — Entities and Mappings
 **Responsible Member:** Member 1
 
 ### 1. Implementation
-
 Implemented the following embeddable records:
 
 - Money
@@ -111,7 +101,6 @@ Implemented the following JPA entities:
 - OrderLine
 
 ### 2. JPA Mappings
-
 - Used sequence-based identifiers for all five entities.
 - Configured allocationSize = 50.
 - Used @Embedded for Money and Address.
@@ -119,7 +108,6 @@ Implemented the following JPA entities:
 - Configured entity-to-table mappings using @Entity and @Table.
 
 ### 3. Database Migration
-
 Created Flyway migration:
 
 `V1__init.sql`
@@ -133,7 +121,6 @@ The migration creates:
 - Required column constraints.
 
 ### 4. Hibernate and Flyway Configuration
-
 - Database: H2
 - Schema migration: Flyway
 - Hibernate DDL mode: validate
@@ -141,43 +128,40 @@ The migration creates:
 Flyway creates the database schema, and Hibernate validates the entity mappings against the database.
 
 ### 5. ProductMappingTest
-
 The following tests were implemented:
 
-- `embeddedMoneyIsPersisted()` â€” Verifies that embedded Money values are persisted and retrieved correctly.
-- `enumCategoryIsSavedAsString()` â€” Verifies that the Category enum is stored as a string in the database.
-- `embeddedAddressIsPersisted()` â€” Verifies that embedded Address values are persisted and retrieved correctly.
+- `embeddedMoneyIsPersisted()` — Verifies that embedded Money values are persisted and retrieved correctly.
+- `enumCategoryIsSavedAsString()` — Verifies that the Category enum is stored as a string in the database.
+- `embeddedAddressIsPersisted()` — Verifies that embedded Address values are persisted and retrieved correctly.
 
 Additionally, `ShopJpaApplicationTests.contextLoads()` verifies successful application context initialization. With Flyway enabled and Hibernate configured with `ddl-auto=validate`, application startup also exercises schema validation.
 
 All four tests passed after restoring the original mappings. The two schema mismatch experiments separately confirmed that Hibernate detects missing columns and incompatible column types.
 
-### 6. Schema Mismatch Experiment 1 â€” Column Name
-
+### 6. Schema Mismatch Experiment 1 — Column Name
 **Objective:** Demonstrate that Hibernate detects a mismatch between the entity mapping and database column name.
 
 - **Original configuration:** The `Product` entity defines a Java field `private String name;`, which maps to the `name` column in the `product` table created by `V1__init.sql`.
 - **Experimental change:** Temporarily added `@Column(name = "product_name")` above the `name` field in `Product.java`, without modifying `V1__init.sql`.
 - **Observed error:** Running `mvn clean verify` produced `BUILD FAILURE` (4 tests run, 0 assertion failures, 4 errors). Hibernate reported:
 
-  ```text
-  org.hibernate.tool.schema.spi.SchemaManagementException: Schema validation: missing column [product_name] in table [product]
-  ```
+  ```text
+  org.hibernate.tool.schema.spi.SchemaManagementException: Schema validation: missing column [product_name] in table [product]
+  ```
 
 - **Explanation:** Flyway created the table with a `name` column, but Hibernate expected a `product_name` column because of the temporary JPA annotation. With Hibernate DDL mode set to `validate`, schema validation failed while initializing the JPA `EntityManagerFactory`, preventing the test application contexts from loading.
 - **Fix:** Removed the temporary `@Column(name = "product_name")` annotation and restored the original `name` field mapping. Ran `mvn clean verify` again and confirmed `BUILD SUCCESS`.
 
-### 7. Schema Mismatch Experiment 2 â€” Column Type
-
+### 7. Schema Mismatch Experiment 2 — Column Type
 **Objective:** Demonstrate that Hibernate detects a mismatch between the entity field type and database column type.
 
 - **Original configuration:** `Product.java` defines `name` as a Java `String`; `V1__init.sql` defines the corresponding column as `name VARCHAR(150) NOT NULL`.
 - **Experimental change:** Temporarily changed the column in `V1__init.sql` to `name INTEGER NOT NULL`, without changing `Product.java`.
 - **Observed error:** Running `mvn clean verify` produced `BUILD FAILURE` (4 tests run, 0 assertion failures, 4 errors). Hibernate reported:
 
-  ```text
-  org.hibernate.tool.schema.spi.SchemaManagementException: Schema validation: wrong column type encountered in column [name] in table [product]; found [integer (Types#INTEGER)], but expecting [varchar(255) (Types#VARCHAR)]
-  ```
+  ```text
+  org.hibernate.tool.schema.spi.SchemaManagementException: Schema validation: wrong column type encountered in column [name] in table [product]; found [integer (Types#INTEGER)], but expecting [varchar(255) (Types#VARCHAR)]
+  ```
 
 - **Explanation:** Flyway created the column with SQL type `INTEGER`, whereas Hibernate expected a `VARCHAR` type for the Java `String` field. The type mismatch was detected during Hibernate schema validation, so the JPA `EntityManagerFactory` could not initialize and the application context tests errored.
 - **Fix:** Restored the migration column to `name VARCHAR(150) NOT NULL`. Ran `mvn clean verify` again and confirmed `BUILD SUCCESS`.
@@ -185,7 +169,6 @@ All four tests passed after restoring the original mappings. The two schema mism
 **Important:** Both experimental changes were reverted after testing. The final project retains the original entity mapping and Flyway migration.
 
 ### 8. How to Run
-
 Build the project:
 
 ```bash
@@ -205,42 +188,35 @@ Run the application:
 ```
 
 ### 9. Task 1 Completion
-
 Task 1 implementation and testing are completed after all acceptance criteria pass.
 
-
-## Task 2 â€” Associations, Cascading and Entity Identity
-
+## Task 2 — Associations, Cascading and Entity Identity
 ### 1. Implementation
-
 Implemented the following relationships:
 
-- Orderâ€“OrderLine: bidirectional one-to-many / many-to-one.
-- Productâ€“Tag: bidirectional many-to-many.
+- Order–OrderLine: bidirectional one-to-many / many-to-one.
+- Product–Tag: bidirectional many-to-many.
 
 ### 2. Order Aggregate Root
-
 The Order entity manages its order lines through:
 
-- `addLine(Product product, int quantity)` â€” Adds a line, sets the owning side, and copies the product's current price.
-- `removeLine(OrderLine line)` â€” Removes a line and updates the relationship.
-- `getLines()` â€” Returns a read-only view.
-- `total()` â€” Calculates the total order amount.
+- `addLine(Product product, int quantity)` — Adds a line, sets the owning side, and copies the product's current price.
+- `removeLine(OrderLine line)` — Removes a line and updates the relationship.
+- `getLines()` — Returns a read-only view.
+- `total()` — Calculates the total order amount.
 
 Configured:
 
 - `cascade = CascadeType.ALL`
 - `orphanRemoval = true`
 
-### 3. Productâ€“Tag Relationship
-
+### 3. Product–Tag Relationship
 - Product owns the relationship through `@JoinTable`.
 - Tag uses `mappedBy = "tags"` as the inverse side.
 - `Product.tag(Tag tag)` maintains both sides.
 - Join table: `product_tag`.
 
 ### 4. Entity Identity
-
 Implemented `equals()`, `hashCode()`, and `toString()` for all five entities:
 
 - Customer
@@ -256,7 +232,6 @@ The hash code remains stable before and after persistence.
 The `toString()` methods use scalar fields only and exclude entity relationships to prevent recursive calls and unexpected lazy loading.
 
 ### 5. Tests
-
 Created:
 
 - `OrderCascadeTest`
@@ -270,7 +245,6 @@ Existing tests:
 All tests passed.
 
 ### 6. Order Cascade SQL Evidence
-
 The `OrderCascadeTest` confirmed the following SQL operations.
 
 **Initial persistence:**
@@ -299,7 +273,6 @@ delete from orders where id=? and version=?
 The test verifies that no order lines remain after deleting the order.
 
 ### 7. Entity Identity Test
-
 The `EntityIdentityTest` verifies that:
 
 - A Product remains findable in a HashSet after persistence.
@@ -308,7 +281,6 @@ The `EntityIdentityTest` verifies that:
 - The hash code remains stable after persistence.
 
 ### 8. toString() Recursion Experiment
-
 **Objective:** Demonstrate the problem caused by including bidirectional relationships in entity `toString()` methods.
 
 **Experimental changes:**
@@ -334,7 +306,6 @@ Restored both methods to use scalar fields only, excluding entity relationships.
 Entity relationships should generally be excluded from `toString()` to avoid infinite recursion and unexpected lazy loading.
 
 ### 9. Task 2 Verification
-
 Run the complete test suite:
 
 ```bash
@@ -345,18 +316,18 @@ Run the complete test suite:
 
 Task 2 implementation and verification are completed.
 
-## Task 3 â€” Repositories, Queries, Projections and REST APIs
-
+## Task 3 — Repositories, Queries, Projections and REST APIs
 Implemented and verified on `task-3` on 2026-11-11 using Java 25, Maven 3.10.0,
+
 Spring Boot 4.1.1, Spring Data JPA 4.1.1, Hibernate 7.4.5.Final and H2 2.4.240.
+
 No commits, pushes, merges or branch switches were performed.
 
 ### Repositories
-
 All repositories extend `JpaRepository` and use the existing entities and sequence mappings.
 
 | Repository / method | Behavior |
-| --- | --- |
+| -------------------------------|
 | `CustomerRepository.findByEmail(email)` | Derived exact email lookup returning `Optional<Customer>`. |
 | `OrderRepository.findByCustomerEmailAndStatusOrderByPlacedAtDesc(email, status)` | Traverses `customer.email`, filters by status and returns newest orders first. |
 | `OrderRepository.countByStatus(status)` | Counts orders with the given status. |
@@ -375,42 +346,59 @@ All repositories extend `JpaRepository` and use the existing entities and sequen
 | `TagRepository.findByName(name)` | Reuses existing tags during development seeding. |
 
 Every explicitly declared JPQL/native parameter uses `@Param`. Global association
+
 fetching remains lazy; fetch joins are limited to the customer-orders query.
 
 ### Product specifications and filter semantics
-
 `ProductSpecs.filter()` combines optional predicates with `Specification.allOf()`:
 
 - `nameContains(q)`: case-insensitive substring match; blank input is unrestricted.
-  SQL wildcard characters `%`, `_` and the escape character are treated literally.
+
+  SQL wildcard characters `%`, `_` and the escape character are treated literally.
+
 - `inCategory(category)`: exact enum equality.
 - `cheaperThan(maxPrice)`: **strictly less than** the supplied amount; the boundary
-  is excluded, matching the method name.
+
+  is excluded, matching the method name.
+
 - `inStock()`: stock greater than zero.
 - `inStock=true` applies `inStock()`; `false` selects stock equal to zero; absent
-  stock, category, price and name filters impose no restriction.
+
+  stock, category, price and name filters impose no restriction.
 
 ### DTOs, services and controllers
-
 `OrderSummary` is a closed interface projection with ID, status, placed-at time,
+
 and a nested `CustomerName` interface exposing only name. `OrderService.list()`
+
 materializes it into `OrderSummaryResponse` (which implements the interface)
+
 inside the read-only transaction, so JSON serialization never needs a live
+
 projection target or a lazy customer association.
 
 `ProductView` is the required five-field record: ID, SKU, name, amount and stock.
+
 `ProductService.search()` applies the specifications and maps each product to
+
 this DTO within its read-only transaction. The category repository method
+
 separately demonstrates a constructor-based record projection over embedded Money.
 
 `OrderDetail` contains order metadata, customer name/email, order lines and total.
+
 `OrderLineView` contains line ID, product ID/SKU/name, quantity and a price snapshot.
+
 `MoneyView` contains amount and currency. `OrderService.customerOrders()` explicitly
+
 uses `@Transactional(readOnly = true)` and the required fetch-join query to build
+
 all DTOs before the persistence context closes.
 
 All services and controllers use constructor injection. Controllers only bind
+
 request parameters and delegate; no controller returns a JPA entity. The existing
+
 `spring.jpa.open-in-view=false` setting is unchanged.
 
 | Controller / endpoint | Parameters and response |
@@ -420,53 +408,79 @@ request parameters and delegate; no controller returns a JPA entity. The existin
 | `CustomerController`: `GET /api/customers/{email}/orders` | Returns a list of complete `OrderDetail` DTOs. Unknown email returns an empty list. |
 
 Page numbers are zero-based. Invalid enum values return HTTP 400 using Spring MVC's
+
 standard parameter conversion. Full real requests and response bodies, including
+
 pagination and filter examples, are recorded in [api-session.md](api-session.md).
 
 ### Compatible domain and schema changes
-
 The inspected Task 2 `Product` and V1 schema had neither SKU nor stock. The new
+
 `V1_1__product_sku_stock.sql` adds:
 
 - `sku VARCHAR(64) NOT NULL`, with a unique constraint. Existing rows receive
-  `LEGACY-<id>` values, so the migration works on populated V1 databases.
+
+  `LEGACY-<id>` values, so the migration works on populated V1 databases.
+
 - `stock INT DEFAULT 0 NOT NULL`, with a database `CHECK (stock >= 0)` constraint.
 
-`V1__init.sql` is unchanged. Flyway orders the migrations as **V1 â†’ V1.1 â†’ V2**.
+`V1__init.sql` is unchanged. Flyway orders the migrations as **V1 → V1.1 → V2**.
+
 Version 2 remains reserved for Task 5; no V2 migration exists on this branch.
+
 Integrate V1.1 before applying the future V2 migration. The normal Flyway ordering
+
 and validation settings remain enabled; out-of-order migration is not enabled.
 
 `Product` adds only the corresponding fields, getters and a constructor accepting
+
 explicit SKU and stock. The existing three-argument public constructor remains
+
 available and assigns an `AUTO-<UUID>` SKU and zero stock. The unique database
+
 constraint is the final uniqueness guarantee. Explicit blank/oversized SKUs and
+
 negative stock are rejected by the constructor; the database also rejects negative
+
 stock, duplicate SKUs and null SKUs. No association, identity or cascade mappings changed.
 
 `Order` keeps its existing constructor and default `PENDING` status. An overload
+
 accepts initial status and placement time for deterministic seed/test fixtures;
+
 it rejects null status/time. No status-transition API is introduced.
 
 The inspected enums did not contain the sample API values `HARDWARE` and `PAID`.
+
 These were added without removing existing values. The existing string enum
+
 mappings and VARCHAR schema already support them, so no enum-column migration is needed.
 
 ### Development seed data
-
 `DataSeeder` is a `@Component`, `@Profile("dev")`, transactional `ApplicationRunner`.
+
 On a fresh database it inserts 3 customers, 12 products (each with two shared tags),
-30 orders and 90 lines (2â€“4 per order), with all six order statuses represented.
+
+30 orders and 90 lines (2–4 per order), with all six order statuses represented.
+
 The fixture names are Dara, Sophea and Sokha; their emails are `<name>@example.com`.
+
 Three products have zero stock. Times are fixed from `2026-01-01T00:00:00Z` so the
+
 pagination examples are reproducible.
 
 Repeated execution reuses customers by email, products by SKU and tags by name.
+
 It skips creating an order batch for a fixture customer who already has orders.
+
 The entire run is one transaction, so a failed run rolls back all of its writes.
+
 This is a development fixture loader; it does not overwrite existing data or
+
 replenish partially deleted order batches. Seeding is disabled by default and in
+
 the original Task 1/2 tests. The HTTP integration tests explicitly enable `dev`
+
 and use a separate in-memory database to verify seeding and repeatability.
 
 ```powershell
@@ -474,7 +488,6 @@ mvn spring-boot:run "-Dspring-boot.run.profiles=dev"
 ```
 
 ### Required derived-query naming experiment
-
 Temporarily added this method to `OrderRepository`:
 
 ```java
@@ -488,6 +501,7 @@ mvn spring-boot:run "-Dspring-boot.run.arguments=--server.port=0"
 ```
 
 The actual startup attempt on 2026-11-11 at 18:17 (Asia/Bangkok) exited with code 1
+
 and `BUILD FAILURE`. These are exact exception lines from that run:
 
 ```text
@@ -496,13 +510,16 @@ Caused by: org.springframework.data.core.PropertyReferenceException: No property
 ```
 
 Spring Data successfully traversed `Order.customer`, then failed to resolve the
+
 misspelled `emali` property during repository creation, preventing context startup.
+
 The experimental method was removed immediately afterward. The restored source
+
 passed the full build and the standalone application started successfully.
 
 ### Verification and actual results
-
 Baseline, before edits: `mvn clean verify` passed **6 tests**, zero failures,
+
 errors or skips, in 18.380 seconds.
 
 Final verification, after removing the broken query:
@@ -523,44 +540,58 @@ $ mvn clean verify
 [INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.928 s -- in edu.itc.shop.web.ApiIntegrationTest
 [INFO] Tests run: 22, Failures: 0, Errors: 0, Skipped: 0
 [INFO] BUILD SUCCESS
-[INFO] Total time:  20.204 s
+[INFO] Total time:  20.204 s
 [INFO] Finished at: 2026-11-11T18:18:12+07:00
-
 $ mvn test "-Dtest=OrderRepositoryTest"
 [INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 6.266 s -- in edu.itc.shop.repository.OrderRepositoryTest
 [INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0
 [INFO] BUILD SUCCESS
-[INFO] Total time:  14.333 s
+[INFO] Total time:  14.333 s
 [INFO] Finished at: 2026-11-11T18:18:44+07:00
 ```
 
 `OrderRepositoryTest` covers derived queries, aggregate counts, native low-stock
+
 SQL, interface/record projections, optional specifications, literal wildcard
+
 handling, pagination and sorting, and compatible SKU/stock initialization.
+
 Its fetch-join test asserts `Hibernate.isInitialized(order.getLines())`, verifies
+
 the mapped collection through `PersistenceUnitUtil.isLoaded(order, "lines")`, and
+
 checks that products/customer are initialized. This extra check matters because
+
 the existing getter returns an unmodifiable wrapper. A separate lookup in a
+
 cleared persistence context verifies that ordinary associations remain lazy and
+
 that detached line access throws `LazyInitializationException`.
 
 `ProductSchemaMigrationTest` first applies V1, inserts legacy products, upgrades
+
 to V1.1, checks backfilled SKUs/stock, tests database constraints and confirms a
+
 second migration run applies no migrations. `ApiIntegrationTest` exercises a real
+
 HTTP server with Open in View disabled, verifies page defaults and explicit sort,
+
 combined product filters, line snapshots/totals, invalid enums, unknown customers,
+
 and seed repeatability. All original tests were retained unchanged and passed.
 
 The packaged app was started with Java and the `dev` profile on port 18083. Actual
+
 startup log excerpts confirm Flyway order, Hibernate initialization with
+
 `ddl-auto=validate`, and successful context startup:
 
 ```text
-2026-11-11T18:18:32.145+07:00  INFO 14424 --- [           main] o.f.core.internal.command.DbMigrate      : Migrating schema "PUBLIC" to version "1 - init"
-2026-11-11T18:18:32.183+07:00  INFO 14424 --- [           main] o.f.core.internal.command.DbMigrate      : Migrating schema "PUBLIC" to version "1.1 - product sku stock"
-2026-11-11T18:18:32.209+07:00  INFO 14424 --- [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 2 migrations to schema "PUBLIC", now at version v1.1 (execution time 00:00.044s)
-2026-11-11T18:18:34.109+07:00  INFO 14424 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
-2026-11-11T18:18:35.664+07:00  INFO 14424 --- [           main] edu.itc.shop.ShopJpaApplication          : Started ShopJpaApplication in 6.669 seconds (process running for 7.21)
+2026-11-11T18:18:32.145+07:00  INFO 14424 --- [           main] o.f.core.internal.command.DbMigrate      : Migrating schema "PUBLIC" to version "1 - init"
+2026-11-11T18:18:32.183+07:00  INFO 14424 --- [           main] o.f.core.internal.command.DbMigrate      : Migrating schema "PUBLIC" to version "1.1 - product sku stock"
+2026-11-11T18:18:32.209+07:00  INFO 14424 --- [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 2 migrations to schema "PUBLIC", now at version v1.1 (execution time 00:00.044s)
+2026-11-11T18:18:34.109+07:00  INFO 14424 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-11-11T18:18:35.664+07:00  INFO 14424 --- [           main] edu.itc.shop.ShopJpaApplication          : Started ShopJpaApplication in 6.669 seconds (process running for 7.21)
 ```
 
 Actual HTTP results (all HTTP 200, complete bodies in `api-session.md`):
@@ -573,32 +604,40 @@ Actual HTTP results (all HTTP 200, complete bodies in `api-session.md`):
 | `/api/products?q=key&category=HARDWARE&maxPrice=60&inStock=true` | Mechanical Keyboard (`DEV-001`, 55.00, stock 5) and USB Keyboard (`DEV-002`, 25.00, stock 6). |
 | Same product filter with `page=1&size=1` | USB Keyboard; total 2 across 2 pages. |
 | `/api/products?inStock=false` | 3 zero-stock product DTOs. |
-| `/api/customers/dara@example.com/orders` | 10 complete orders with 2â€“4 lines each and calculated totals. |
+| `/api/customers/dara@example.com/orders` | 10 complete orders with 2–4 lines each and calculated totals. |
 | `/api/customers/missing@example.com/orders` | Empty list. |
 
 Actual SQL excerpts from the build/application logs follow. The fetch join loads
+
 the customer, lines and products together; product filtering uses a parameterized
+
 predicate and database pagination; the native query and constructor projection
+
 select the expected columns. These are captured statements, not reconstructed SQL:
 
 ```text
-2026-11-11T18:18:06.489+07:00 DEBUG 24756 --- [           main] org.hibernate.SQL                        : SELECT * FROM product WHERE stock < ? ORDER BY stock, id
-2026-11-11T18:18:06.700+07:00 DEBUG 24756 --- [           main] org.hibernate.SQL                        : select p1_0.id,p1_0.sku,p1_0.name,p1_0.price_amount,p1_0.stock from product p1_0 where p1_0.category=? order by p1_0.price_amount fetch first ? rows only
-2026-11-11T18:18:06.857+07:00 DEBUG 24756 --- [           main] org.hibernate.SQL                        : select count(l1_0.id) from orders o1_0 join order_line l1_0 on o1_0.id=l1_0.order_id where o1_0.status=?
-2026-11-11T18:19:09.354+07:00 DEBUG 14424 --- [io-18083-exec-2] org.hibernate.SQL                        : select distinct o1_0.id,o1_0.customer_id,c1_0.id,c1_0.street,c1_0.city,c1_0.country,c1_0.postal_code,c1_0.email,c1_0.name,l1_0.order_id,l1_0.id,l1_0.product_id,p1_0.id,p1_0.category,p1_0.name,p1_0.price_amount,p1_0.price_currency,p1_0.sku,p1_0.stock,l1_0.quantity,l1_0.unit_price_amount,l1_0.unit_price_currency,o1_0.placed_at,o1_0.status,o1_0.version from orders o1_0 join customer c1_0 on c1_0.id=o1_0.customer_id left join order_line l1_0 on o1_0.id=l1_0.order_id left join product p1_0 on p1_0.id=l1_0.product_id where c1_0.email=? order by o1_0.placed_at desc,o1_0.id desc
-2026-11-11T18:19:09.298+07:00 DEBUG 14424 --- [o-18083-exec-10] org.hibernate.SQL                        : select p1_0.id,p1_0.category,p1_0.name,p1_0.price_amount,p1_0.price_currency,p1_0.sku,p1_0.stock from product p1_0 where lower(p1_0.name) like ? escape '\' and p1_0.category=? and p1_0.price_amount<? and p1_0.stock>? order by p1_0.id offset ? rows fetch first ? rows only
+2026-11-11T18:18:06.489+07:00 DEBUG 24756 --- [           main] org.hibernate.SQL                        : SELECT * FROM product WHERE stock < ? ORDER BY stock, id
+2026-11-11T18:18:06.700+07:00 DEBUG 24756 --- [           main] org.hibernate.SQL                        : select p1_0.id,p1_0.sku,p1_0.name,p1_0.price_amount,p1_0.stock from product p1_0 where p1_0.category=? order by p1_0.price_amount fetch first ? rows only
+2026-11-11T18:18:06.857+07:00 DEBUG 24756 --- [           main] org.hibernate.SQL                        : select count(l1_0.id) from orders o1_0 join order_line l1_0 on o1_0.id=l1_0.order_id where o1_0.status=?
+2026-11-11T18:19:09.354+07:00 DEBUG 14424 --- [io-18083-exec-2] org.hibernate.SQL                        : select distinct o1_0.id,o1_0.customer_id,c1_0.id,c1_0.street,c1_0.city,c1_0.country,c1_0.postal_code,c1_0.email,c1_0.name,l1_0.order_id,l1_0.id,l1_0.product_id,p1_0.id,p1_0.category,p1_0.name,p1_0.price_amount,p1_0.price_currency,p1_0.sku,p1_0.stock,l1_0.quantity,l1_0.unit_price_amount,l1_0.unit_price_currency,o1_0.placed_at,o1_0.status,o1_0.version from orders o1_0 join customer c1_0 on c1_0.id=o1_0.customer_id left join order_line l1_0 on o1_0.id=l1_0.order_id left join product p1_0 on p1_0.id=l1_0.product_id where c1_0.email=? order by o1_0.placed_at desc,o1_0.id desc
+2026-11-11T18:19:09.298+07:00 DEBUG 14424 --- [o-18083-exec-10] org.hibernate.SQL                        : select p1_0.id,p1_0.category,p1_0.name,p1_0.price_amount,p1_0.price_currency,p1_0.sku,p1_0.stock from product p1_0 where lower(p1_0.name) like ? escape '\\' and p1_0.category=? and p1_0.price_amount<? and p1_0.stock>? order by p1_0.id offset ? rows fetch first ? rows only
 ```
 
 No functional failures remain. Non-blocking environment/framework notices observed:
+
 Maven reports HTTP 401 metadata warnings for configured optional Flyway feeds;
+
 Flyway reports that H2 2.4.240 is newer than its verified H2 version; Spring Data
+
 warns that the default `PageImpl` JSON shape is not guaranteed across framework
+
 upgrades. The requested `Page<...>` responses work and their current shape is
+
 recorded and tested. No dependency versions or global page serialization settings
+
 were changed for Task 3.
 
 ### File manifest and review handoff
-
 Modified files:
 
 ```text
@@ -637,19 +676,19 @@ src/test/java/edu/itc/shop/web/ApiIntegrationTest.java
 ```
 
 Final Git status: `task-3`, 5 modified tracked files and 22 untracked new files;
+
 no staged changes. V1, the Maven dependencies, application settings and the existing
+
 tests are unchanged. Nothing has been committed or pushed.
 
 Suggested commit message: `feat: implement lab03 task 3 repositories and REST APIs`
 
----
+**---**
 
 ## Task 4 — Transactions, Dirty Checking and Optimistic Locking
-
 **Responsible Member:** Member 5
 
 ### 1. Managed Entities and Dirty Checking
-
 Implemented transactional order status updates in `OrderService`.
 
 The `markPaid()` and `changeStatus()` methods retrieve an Order through `OrderRepository` and modify its status using `changeStatus()`.
@@ -659,10 +698,10 @@ No explicit `save()` call is required after modifying a managed entity. Hibernat
 **Verification:** `OrderServiceTest` verifies that changing an order status through the service persists the new status.
 
 ### 2. Detached Entities and Merge
-
 Implemented a detached entity experiment in `ProductDetachedEntityTest`.
 
 The test:
+
 - Creates and saves a Product.
 - Loads the Product outside a surrounding transaction.
 - Changes its stock from 10 to 99.
@@ -675,12 +714,12 @@ Spring Data JPA uses the merge operation for an existing detached entity when sa
 **Verification:** `ProductDetachedEntityTest` passed.
 
 ### 3. Read-Only Transactions
-
 Implemented `OrderService.view()` with `@Transactional(readOnly = true)`.
 
 The method retrieves a managed Order, deliberately attempts to change its status to CANCELLED, and returns an `OrderDto`.
 
 `ReadOnlyTransactionTest` verifies two different results:
+
 - The returned DTO contains CANCELLED.
 - A fresh database read still contains PENDING.
 
@@ -689,18 +728,19 @@ This demonstrates the read-only transaction behavior with the current Hibernate 
 **Verification:** `ReadOnlyTransactionTest` passed.
 
 ### 4. Flush Ordering and Constraint Violations
-
 Implemented `FlushOrderingTest` using the unique constraint on `Tag.name`.
 
 Two scenarios are tested:
 
 **Without an explicit flush:**
+
 - Delete an existing Tag.
 - Schedule insertion of another Tag with the same name.
 - Flush the persistence context.
 - Verify that the unique constraint violation is detected.
 
 **With an explicit flush:**
+
 - Delete the existing Tag.
 - Call `tags.flush()` to execute the DELETE.
 - Insert a replacement Tag with the same name.
@@ -711,7 +751,6 @@ The experiment demonstrates that Hibernate's SQL execution order is not necessar
 **Verification:** Both `FlushOrderingTest` scenarios passed.
 
 ### 5. Optimistic Locking with Concurrent Transactions
-
 The Order entity uses:
 
 `@Version private long version;`
@@ -721,6 +760,7 @@ This version field allows Hibernate to detect concurrent modifications.
 `OptimisticLockingTest` uses two real threads and a `CountDownLatch` to ensure both transactions load the same Order version before attempting updates.
 
 The test verifies:
+
 - Both transactions load the same version.
 - Both attempt to change the Order status.
 - One transaction successfully updates the record.
@@ -732,7 +772,6 @@ The test also verifies that the final status is either PAID or CANCELLED, depend
 **Verification:** `OptimisticLockingTest` passed.
 
 ### 6. Retry Recovery with OrderFacade
-
 Implemented `OrderFacade` separately from `OrderService`.
 
 The facade calls `OrderService.changeStatus()` and catches `ObjectOptimisticLockingFailureException`.
@@ -749,7 +788,6 @@ The separation is important because the exception may occur during transaction c
 **Verification:** Both `OrderFacadeTest` scenarios passed.
 
 ### 7. SQL and Transaction Logging
-
 Enabled Hibernate SQL and parameter logging in `application.yml`:
 
 - `org.hibernate.SQL: DEBUG`
@@ -783,7 +821,6 @@ BUILD SUCCESS
 ```
 
 ### 8. Task 4 Test Summary
-
 | Test class | Verification |
 | --- | --- |
 | OrderServiceTest | Dirty checking |
@@ -796,11 +833,74 @@ BUILD SUCCESS
 All six Task 4 test classes were executed individually and reported successful results during implementation.
 
 ### 9. Conclusion
-
 Task 4 demonstrates how Spring transactions and Hibernate persistence-context behavior affect database updates.
 
 The implementation covers managed and detached entities, dirty checking, read-only transactions, explicit flushing, optimistic locking and retry recovery.
 
 The concurrency experiment confirms that version checking prevents lost updates when multiple transactions attempt to modify the same Order.
 
+## Task 5 — Performance Optimization and Database Migrations
 
+### 1. N+1 Query Problem and Fetching Strategies
+
+The `NPlusOneTest` experiment loaded three orders with their lazy `OrderLine` collections and measured Hibernate prepared SQL statement counts.
+
+| Fetching strategy | Orders | Prepared SQL statements | Median execution time |
+| --- | ---: | ---: | ---: |
+| Unoptimized lazy loading (measured before enabling batching) | 3 | 4 | Not recorded |
+| JPQL `JOIN FETCH` | 3 | 1 | 2.820 ms (first median run); 1.735 ms (later run) |
+| `@EntityGraph(attributePaths = {"lines"})` | 3 | 1 | 4.260 ms |
+| `@BatchSize(size = 2)` | 3 | 3 | 5.146 ms |
+
+The initial baseline executed one orders query and three queries for lazy collections. After enabling `@BatchSize(size = 2)`, ordinary lazy loading also took three statements, so the unoptimized baseline was a **before-configuration measurement**, not a simultaneous test under the final configuration. The class's four tests passed together with zero failures and errors. The final test suite still needs a separately reproducible unbatched baseline.
+
+Timing methods used two warm-up iterations and five measured iterations, cleared the persistence context between iterations and reported the median. These are small, separate H2 test runs; they demonstrate the techniques but do not prove a universal ranking of execution speed.
+
+### 2. JDBC Batch Inserts
+
+Configured Hibernate `hibernate.jdbc.batch_size = 20`, `hibernate.order_inserts = true` and `hibernate.order_updates = true` in `application.yml`. `BatchInsertTest` persisted **1,000 Product entities** and flushed/cleared the persistence context every 20 inserts. The latest recorded run reported:
+
+- Execution time: **418.014 ms**.
+- Hibernate prepared statement count: **71**.
+- Entity insert count: **1,000**.
+- Configured batch size: **20**.
+- Test result: **1 test, 0 failures, 0 errors**.
+
+Temporary `org.hibernate.orm.jdbc.batch: TRACE` logging showed messages including `Adding to JDBC batch (2 / 20)` and `(3 / 20)`, confirming batch accumulation. The trace setting was subsequently removed. The prepared-statement count **is not a JDBC batch count**; no exact batch execution count was recorded.
+
+### 3. Open-in-View and Lazy Loading
+
+The application uses `spring.jpa.open-in-view: false`. `OpenInViewTest` created and reloaded an order inside a transaction, confirmed through JPA's `PersistenceUnitUtil.isLoaded(order, "lines")` that its lines were not initialized, then checked that accessing the detached lazy collection after transaction completion caused a `LazyInitializationException`.
+
+Observed output: `OSIV TEST - LazyInitializationException confirmed`. The test finished with **1 test, 0 failures, 0 errors** and **BUILD SUCCESS**. This verifies detached lazy-loading behavior; it is **not** a direct test of an HTTP request's Open-in-View lifecycle.
+
+### 4. Flyway Migration V2 and Index Definitions
+
+Created `src/main/resources/db/migration/V2__indexes.sql` containing three composite indexes:
+
+```sql
+CREATE INDEX idx_orders_status_placed
+ON orders(status, placed_at DESC);
+CREATE INDEX idx_orders_customer_placed
+ON orders(customer_id, placed_at DESC);
+CREATE INDEX idx_order_line_order_product
+ON order_line(order_id, product_id);
+```
+
+On application restart, Flyway applied `V1__init.sql`, `V1_1__product_sku_stock.sql` and `V2__indexes.sql` in order. H2's `INFORMATION_SCHEMA.INDEXES` confirmed all three new indexes exist. Flyway's quoted lowercase `"flyway_schema_history"` table showed successful migrations for versions **1**, **1.1** and **2** (plus an initial history-table creation record).
+
+### 5. EXPLAIN Before and After V2
+
+Executed the same SQL queries in the H2 Console before and after creating V2 indexes:
+
+| Query | Before V2 index migration | After V2 index migration |
+| --- | --- | --- |
+| `SELECT * FROM orders WHERE status = 'NEW' ORDER BY placed_at DESC` | `PUBLIC.ORDERS.tableScan` | `PUBLIC.IDX_ORDERS_STATUS_PLACED` |
+| `SELECT * FROM orders WHERE customer_id = 1 ORDER BY placed_at DESC` | `PUBLIC.CONSTRAINT_INDEX_8` | `PUBLIC.CONSTRAINT_INDEX_8` |
+| `SELECT * FROM order_line WHERE order_id = 1 ORDER BY product_id` | `PUBLIC.CONSTRAINT_INDEX_4` | `PUBLIC.CONSTRAINT_INDEX_4` |
+
+The first query changed from a table scan to using the new index. For the other two queries, H2 continued to choose existing foreign-key indexes. The new indexes were created successfully, but these plans do **not** establish that all three improve execution times. Measurements were taken on a small H2 in-memory database.
+
+### 6. Remaining Final Verification
+
+Before final submission, run `mvn clean verify` against the combined project, preserve the final test summary, and provide a reproducible unbatched N+1 baseline if the instructor expects that experiment to work independently from the enabled `@BatchSize` mapping. Do not report a full-suite success until that final run has been completed.

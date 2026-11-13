@@ -10,6 +10,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.EntityGraph;
+
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByCustomerEmailAndStatusOrderByPlacedAtDesc(String email, OrderStatus status);
@@ -34,4 +36,17 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("select count(l) from Order o join o.lines l where o.status = :status")
     long countLinesByStatus(@Param("status") OrderStatus status);
+
+    //1 : join fetch
+    @Query("""
+        SELECT DISTINCT o
+        FROM Order o
+        LEFT JOIN FETCH o.lines
+        """)
+    List<Order> findAllWithLines();
+
+    //2 : @EntityGraph
+    @EntityGraph(attributePaths = {"lines"})
+    @Query("SELECT o FROM Order o")
+    List<Order> findAllWithLinesGraph();
 }
