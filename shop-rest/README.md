@@ -14,3 +14,8 @@ Eclipse Jersey 4.0, and Grizzly HTTP Server.
 - Artifact ID: shop-rest
 - Version: 1.0-SNAPSHOT
 
+## Task 1 — Stateless Resource
+
+ProductResource does not store mutable request-specific fields because
+each HTTP request should be handled independently, preventing shared-state
+problems when multiple clients access the API concurrently.
