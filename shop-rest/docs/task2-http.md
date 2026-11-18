@@ -1,244 +1,163 @@
-# Task 2 – RESTful Web Services: HTTP Testing
+# Lab 04 — Task 2: CRUD, HTTP Status Codes, JSON and XML
 
-## 1. Overview
+## 1. Purpose and setup
 
-This document describes the testing of the RESTful Web Services developed in Task 2.
+Task 2 extends the JAX-RS product API with POST, PUT, PATCH and DELETE operations. It uses `ProductDto` for JSON and XML representations, preserves the required HTTP status codes, and handles duplicate SKUs and insufficient stock with `409 Conflict`.
 
-The API manages products using CRUD operations (Create, Read, Update, and Delete). It supports JSON and XML formats and returns appropriate HTTP status codes.
+- Base URL: `http://localhost:8080/api`
+- Product collection: `/api/products`
+- Start server from `shop-rest/`: `mvn -q compile exec:java`
+- HTTP client: Windows CMD `curl -i` (with the Grizzly server running in another terminal)
 
-**Base URL:**
+## 2. Endpoint summary
 
-```text
-http://localhost:8080/api
-```
+| Method | Path | Expected success | Error behavior |
+|---|---|---|---|
+| GET | `/products` | 200, product DTO list | — |
+| GET | `/products/{id}` | 200, product DTO | 404 if missing |
+| POST | `/products` | 201, `Location` and product DTO | 409 for duplicate SKU; 415 for unsupported media type |
+| PUT | `/products/{id}` | 200, updated product DTO | 404 if missing |
+| PATCH | `/products/{id}/stock` | 200, updated product DTO | 409 if stock would become negative |
+| DELETE | `/products/{id}` | 204, empty body | 404 if missing |
 
-**Products endpoint:**
+The `ProductDto` response does not expose the domain model's `version` field. JSON and XML are supported for product representations; PATCH stock uses a JSON request body.
 
-```text
-/api/products
-```
+## 3. Actual HTTP transcript
 
-## 2. REST API Endpoints
+The following sections reproduce the **actual response headers and bodies** saved during testing in `task2-actual-http(1).txt`. Some requests changed the in-memory state before later captures (e.g., Mug had previously been updated to 45 units). Product IDs and quantities below reflect that test session.
 
-| HTTP Method | Endpoint | Description |
-|---|---|---|
-| GET | `/products` | Retrieve all products |
-| GET | `/products/{id}` | Retrieve a product by ID |
-| POST | `/products` | Create a new product |
-| PUT | `/products/{id}` | Replace an existing product |
-| PATCH | `/products/{id}/stock` | Change product stock |
-| DELETE | `/products/{id}` | Delete a product |
+### 3.1 GET all products — 200 OK
 
-## 3. HTTP Status Codes
-
-| Status Code | Meaning | Usage |
-|---|---|---|
-| 200 OK | Successful request | Retrieve or update a product |
-| 201 Created | Resource created | Create a new product |
-| 204 No Content | Successful deletion | Delete a product |
-| 404 Not Found | Resource not found | Product ID does not exist |
-| 409 Conflict | Request conflicts with business rules | Duplicate SKU or insufficient stock |
-| 415 Unsupported Media Type | Unsupported content type | Sending an unsupported format |
-
-## 4. Testing the API
-
-Start the application:
-
-```bash
-mvn -q compile exec:java
-```
-
-Keep the server terminal running. Open another terminal to execute the following tests.
-
-### Test 1: Get All Products
-
-```bash
+```cmd
 curl -i http://localhost:8080/api/products
 ```
 
-Expected result:
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 256
 
-- Status: `200 OK`
-- Returns a list of products.
-
-### Test 2: Get a Product by ID
-
-```bash
-curl -i http://localhost:8080/api/products/1
+[{"id":1,"name":"Kettle","price":24.90,"sku":"KT-01","stock":12},{"id":2,"name":"Mug","price":6.50,"sku":"MG-01","stock":45},{"id":3,"name":"Tea","price":4.20,"sku":"TE-01","stock":0},{"id":4,"name":"Electric Teapot","price":35.00,"sku":"TP-01","stock":8}]
 ```
 
-Expected result:
+### 3.2 POST JSON — 201 Created, Location header
 
-- Status: `200 OK`
-- Returns the product with ID 1.
-
-### Test 3: Get a Product That Does Not Exist
-
-```bash
-curl -i http://localhost:8080/api/products/99
+```cmd
+curl -i -X POST http://localhost:8080/api/products -H "Content-Type: application/json" -d "{\"name\":\"Notebook\",\"sku\":\"NB-01\",\"price\":12.50,\"stock\":10}"
 ```
 
-Expected result:
+```http
+HTTP/1.1 201 Created
+Location: http://localhost:8080/api/products/6
+Content-Type: application/json
+Content-Length: 65
 
-- Status: `404 Not Found`
-
-### Test 4: Create a Product Using JSON
-
-```bash
-curl -i -X POST http://localhost:8080/api/products \
--H "Content-Type: application/json" \
--d '{"name":"Teapot","sku":"TP-01","price":31.00,"stock":5}'
+{"id":6,"name":"Notebook","price":12.50,"sku":"NB-01","stock":10}
 ```
 
-Expected result:
+The `Location` header identifies the newly created product. Its identifier is assigned by the repository.
 
-- Status: `201 Created`
-- Returns the created product.
-- Includes a `Location` response header containing the new product URL.
+### 3.3 Duplicate SKU — 409 Conflict
 
-### Test 5: Create a Product with a Duplicate SKU
+The identical Notebook POST request was repeated.
 
-Send the same POST request again using SKU `TP-01`.
-
-Expected result:
-
-- Status: `409 Conflict`
-- Duplicate SKU is rejected.
-
-### Test 6: Update a Product Using PUT
-
-Replace `4` with the ID of the product you created in Test 4 if necessary.
-
-```bash
-curl -i -X PUT http://localhost:8080/api/products/4 \
--H "Content-Type: application/json" \
--d '{"name":"Large Teapot","sku":"TP-01","price":35.00,"stock":8}'
+```http
+HTTP/1.1 409 Conflict
+Content-Length: 0
 ```
 
-Expected result:
+### 3.4 GET XML — 200 OK
 
-- Status: `200 OK`
-- Product information is updated.
-
-### Test 7: Change Stock Using PATCH
-
-```bash
-curl -i -X PATCH http://localhost:8080/api/products/3/stock \
--H "Content-Type: application/json" \
--d '{"delta":10}'
+```cmd
+curl -i http://localhost:8080/api/products/4 -H "Accept: application/xml"
 ```
 
-Expected result:
+```http
+HTTP/1.1 200 OK
+Content-Type: application/xml
+Content-Length: 161
 
-- Status: `200 OK`
-- Stock increases by 10.
-
-### Test 8: Try to Remove More Stock Than Available
-
-```bash
-curl -i -X PATCH http://localhost:8080/api/products/3/stock \
--H "Content-Type: application/json" \
--d '{"delta":-100}'
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?><product id="4"><name>Electric Teapot</name><sku>TP-01</sku><price>35.00</price><stock>8</stock></product>
 ```
 
-Expected result:
+### 3.5 PATCH stock successfully — 200 OK
 
-- Status: `409 Conflict`
-- Stock cannot become negative.
-
-### Test 9: Delete a Product
-
-Replace `4` with the ID of an existing product.
-
-```bash
-curl -i -X DELETE http://localhost:8080/api/products/4
+```cmd
+curl -i -X PATCH http://localhost:8080/api/products/2/stock -H "Content-Type: application/json" -d "{\"delta\":5}"
 ```
 
-Expected result:
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 59
 
-- Status: `204 No Content`
-- Product is deleted successfully.
-
-### Test 10: Delete a Product That Does Not Exist
-
-```bash
-curl -i -X DELETE http://localhost:8080/api/products/99
+{"id":2,"name":"Mug","price":6.50,"sku":"MG-01","stock":50}
 ```
 
-Expected result:
+This request increased Mug stock from 45 to 50.
 
-- Status: `404 Not Found`
+### 3.6 PATCH with insufficient stock — 409 Conflict
 
-## 5. JSON and XML Testing
-
-### Create a Product Using XML
-
-```bash
-curl -i -X POST http://localhost:8080/api/products \
--H "Content-Type: application/xml" \
--d '<product><name>Plate</name><sku>PL-01</sku><price>8.50</price><stock>20</stock></product>'
+```cmd
+curl -i -X PATCH http://localhost:8080/api/products/3/stock -H "Content-Type: application/json" -d "{\"delta\":-1}"
 ```
 
-Expected result:
-
-- Status: `201 Created`
-- Product is accepted in XML format.
-
-### Retrieve Products Using XML
-
-```bash
-curl -i http://localhost:8080/api/products \
--H "Accept: application/xml"
+```http
+HTTP/1.1 409 Conflict
+Content-Length: 0
 ```
 
-Expected result:
+Tea has zero stock; removing one unit was rejected.
 
-- Status: `200 OK`
-- Returns products in XML format.
+### 3.7 DELETE existing product — 204 No Content
 
-### Test Unsupported Media Type
-
-```bash
-curl -i -X POST http://localhost:8080/api/products \
--H "Content-Type: text/plain" \
--d "Teapot"
+```cmd
+curl -i -X DELETE http://localhost:8080/api/products/6
 ```
 
-Expected result:
+```http
+HTTP/1.1 204 No Content
+```
 
-- Status: `415 Unsupported Media Type`
+The successful DELETE response has no body.
 
-## 6. Summary
+## 4. Additional manually verified scenarios
 
-Task 2 implements the main REST API operations:
+The following scenarios were exercised during the same review and confirmed in the terminal conversation. **Their full raw HTTP headers were not retained in the uploaded transcript**, so they are not represented as captured HTTP exchanges.
 
-- GET retrieves product information.
-- POST creates new products.
-- PUT replaces existing product information.
-- PATCH changes product stock.
-- DELETE removes products.
-- JSON and XML are supported for product data.
-- HTTP status codes communicate the result of each request.
-- Business rules prevent duplicate SKUs and negative stock quantities.
-
-## 7. Test Results
-
-Record your actual test results after running the application.
-
-| Test | Expected Status | Actual Status |
+| Scenario | Windows CMD request | Observed result |
 |---|---|---|
-| Get all products | 200 OK | |
-| Get product by ID | 200 OK | |
-| Get missing product | 404 Not Found | |
-| Create product | 201 Created | |
-| Duplicate SKU | 409 Conflict | |
-| Update product | 200 OK | |
-| Change stock | 200 OK | |
-| Insufficient stock | 409 Conflict | |
-| Delete product | 204 No Content | |
-| Delete missing product | 404 Not Found | |
-| Create product using XML | 201 Created | |
-| Retrieve products using XML | 200 OK | |
-| Unsupported media type | 415 Unsupported Media Type | |
+| GET existing product | `curl -i http://localhost:8080/api/products/2` | 200 OK (confirmed earlier) |
+| GET missing product | `curl -i http://localhost:8080/api/products/99` | 404 Not Found (confirmed earlier) |
+| POST with XML | `curl -i -X POST http://localhost:8080/api/products -H "Content-Type: application/xml" -H "Accept: application/xml" -d "<product><name>Cup</name><sku>CP-01</sku><price>8.50</price><stock>10</stock></product>"` | 201 Created (confirmed earlier) |
+| GET created XML product | `curl -i http://localhost:8080/api/products/5 -H "Accept: application/xml"` | 200 OK, XML response (confirmed earlier) |
+| PUT existing product | `curl -i -X PUT http://localhost:8080/api/products/4 -H "Content-Type: application/json" -d "{\"name\":\"Electric Teapot\",\"sku\":\"TP-01\",\"price\":35.00,\"stock\":8}"` | Updated product JSON returned; reported as 200 OK |
+| DELETE product again | `curl -i -X DELETE http://localhost:8080/api/products/6` | 404 Not Found (confirmed earlier) |
+| Unsupported media type | `curl -i -X POST http://localhost:8080/api/products -H "Content-Type: text/plain" -d "Teapot"` | 415 Unsupported Media Type (confirmed earlier) |
 
-**Note:** The expected results above are the results to verify, not recorded test evidence. Fill in the actual status codes after running each test.
+**Not confirmed by an actual result:** PUT `/api/products/999` → 404. This is an expected Task 2 behavior, but the conversation did not include its response. It is not marked as passed below.
+
+## 5. Verification summary
+
+| Requirement | Expected status | Evidence | Outcome |
+|---|---|---|---|
+| GET product list | 200 | Captured response and headers | Pass |
+| GET existing product | 200 | Earlier interactive check | Pass |
+| GET missing product | 404 | Earlier interactive check | Pass |
+| POST JSON and `Location` | 201 | Captured response and headers | Pass |
+| Duplicate SKU rejection | 409 | Captured response and headers | Pass |
+| XML POST | 201 | Earlier interactive check | Pass |
+| XML GET | 200 | Captured response and headers | Pass |
+| PUT existing product | 200 | Updated JSON observed during interactive check | Pass (status reported) |
+| PUT missing product | 404 | No confirmed response retained | Not verified |
+| PATCH stock success | 200 | Captured response and headers | Pass |
+| PATCH insufficient stock | 409 | Captured response and headers | Pass |
+| DELETE existing product | 204 | Captured response and headers | Pass |
+| DELETE missing product | 404 | Earlier interactive check | Pass |
+| POST text/plain | 415 | Earlier interactive check | Pass |
+
+## 6. Conclusion
+
+The recorded responses demonstrate the required creation, duplicate-SKU handling, JSON and XML output, stock adjustment, insufficient-stock rejection, and successful deletion. Additional interactive checks support XML input, PUT replacement, missing-product handling, and unsupported-media-type rejection. The PUT-missing-product case remains unverified in the evidence available for this report.
+
+Task 3 will introduce formal Bean Validation and RFC 9457 `application/problem+json` error representations; those features are outside Task 2's required implementation.
