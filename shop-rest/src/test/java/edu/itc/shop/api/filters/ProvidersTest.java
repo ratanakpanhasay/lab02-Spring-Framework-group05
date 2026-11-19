@@ -76,7 +76,7 @@ class ProvidersTest extends JerseyTest {
 
     private static void assertCorsHeaders(Response r) {
         assertEquals(CorsFilter.ALLOWED_ORIGIN, r.getHeaderString("Access-Control-Allow-Origin"));
-        assertEquals(CorsFilter.ALLOWED_METHODS, r.getHeaderString("Access-Control-Allow-Methods"));
+        assertEquals("GET,POST,PUT,PATCH,DELETE", r.getHeaderString("Access-Control-Allow-Methods"));
         assertEquals("Content-Type,X-Api-Key,X-Correlation-Id,If-Match",
                 r.getHeaderString("Access-Control-Allow-Headers"));
         assertEquals("Location,ETag,Link,X-Total-Count,X-Correlation-Id",
@@ -115,6 +115,19 @@ class ProvidersTest extends JerseyTest {
     @Test
     void defaultApiKeyIsDemo123() {
         assertEquals(201, createProduct("demo-123").getStatus());
+    }
+
+    @Test
+    void apiKeyFilterIsPreMatching() {
+        assertTrue(ApiKeyFilter.class.isAnnotationPresent(PreMatching.class));
+    }
+
+    @Test
+    void unauthorizedPostToUnmatchedPathIs401Not404() {
+        Response r = target("no-such-resource").request().post(Entity.json("{}"));
+        assertEquals(401, r.getStatus());
+        assertEquals("ApiKey realm=\"shop\"", r.getHeaderString("WWW-Authenticate"));
+        assertNotNull(r.getHeaderString(CorrelationFilter.HEADER));
     }
 
     @Test
@@ -203,9 +216,17 @@ class ProvidersTest extends JerseyTest {
     }
 
     @Test
+    void accessLogOmitsQueryString() {
+        target("products").queryParam("q", "tea").request().get();
+        assertEquals(1, accessLog.size(), accessLog.toString());
+        assertTrue(accessLog.get(0).matches("GET /\\S*products -> 200 \\[[\\w-]+] \\d+ ms"), accessLog.get(0));
+    }
+
+    @Test
     void apiKeyFilterRunsBeforeCorrelationFilter() {
+        assertTrue(ApiKeyFilter.class.isAnnotationPresent(PreMatching.class));
         assertFalse(CorrelationFilter.class.isAnnotationPresent(PreMatching.class),
-                "a @PreMatching filter would always run before ApiKeyFilter");
+                "pre-matching filters always run before post-matching ones");
         int apiKey = ApiKeyFilter.class.getAnnotation(Priority.class).value();
         int correlation = CorrelationFilter.class.getAnnotation(Priority.class).value();
         assertTrue(apiKey < correlation);

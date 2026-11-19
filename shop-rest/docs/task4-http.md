@@ -4,15 +4,15 @@ Captured on 2026-11-19 against the real server started with
 `mvn -q compile exec:java` (`http://localhost:8080/api/`), curl 8.22.0, Git Bash on Windows 11.
 `-Djava.util.logging.SimpleFormatter.format="%4$s [%3$s] %5$s%n"` was added only for one-line log output.
 
-Automated check: `mvn -q verify` → `ProvidersTest` 19 tests and `ApiKeysPropertyTest` 2 tests,
+Automated check: `mvn -q verify` → `ProvidersTest` 22 tests and `ApiKeysPropertyTest` 2 tests,
 `Failures: 0, Errors: 0, Skipped: 0`.
 
 | Provider | Kind / order | Behaviour |
 |---|---|---|
 | `RequestTimingFilter` | `@PreMatching` request filter, `@Priority(1)` | Records the request start time first, so the duration is measured even when CORS or `ApiKeyFilter` abort the request |
-| `CorsFilter` | `@PreMatching` request + response filter | Answers preflight `OPTIONS` with **200**; adds to **every** response, including 401: `Access-Control-Allow-Origin: http://localhost:5173`, `Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS`, `Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match`, `Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id` |
-| `ApiKeyFilter` | request filter, `@Priority(Priorities.AUTHENTICATION)` (1000) | `GET`/`HEAD`/`OPTIONS` public; other methods need `X-Api-Key` matching one of the comma-separated keys in system property `shop.api.keys` (default `demo-123`), else 401 `application/problem+json` + `WWW-Authenticate: ApiKey realm="shop"` |
-| `CorrelationFilter` | request + response filter, `@Priority(Priorities.USER)` (5000), not pre-matching | Runs **after** `ApiKeyFilter`. Reuses a safe `X-Correlation-Id` (`[A-Za-z0-9._-]{1,64}`) or generates a UUID and sets it on every response (the response filter resolves it itself when an earlier filter aborted). Writes one access-log line per request: `METHOD path -> status [correlation-id] duration ms` |
+| `ApiKeyFilter` | `@PreMatching` request filter, `@Priority(Priorities.AUTHENTICATION)` (1000) | Runs before resource matching, so unauthorized writes to unknown paths get 401, not 404. `GET`/`HEAD`/`OPTIONS` public; other methods need `X-Api-Key` matching one of the comma-separated keys in system property `shop.api.keys` (default `demo-123`), else 401 `application/problem+json` + `WWW-Authenticate: ApiKey realm="shop"` |
+| `CorsFilter` | `@PreMatching` request + response filter | Answers preflight `OPTIONS` with **200**; adds to **every** response, including 401: `Access-Control-Allow-Origin: http://localhost:5173`, `Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE`, `Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match`, `Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id` |
+| `CorrelationFilter` | request + response filter, `@Priority(Priorities.USER)` (5000), not pre-matching | Runs **after** `ApiKeyFilter`. Reuses a safe `X-Correlation-Id` (`[A-Za-z0-9._-]{1,64}`) or generates a UUID and sets it on every response (the response filter resolves it itself when an earlier filter aborted). Writes one access-log line per request via `System.Logger`: `METHOD path -> status [correlation-id] duration ms` (path without query string) |
 | `@Compress` | `@NameBinding` annotation | Only on `GET /products` |
 | `GzipWriterInterceptor` | `WriterInterceptor` bound by `@Compress` | Gzips when `Accept-Encoding` allows gzip (honours `q=0`); sets `Content-Encoding: gzip` and `Vary: Accept-Encoding` |
 
@@ -27,9 +27,9 @@ curl -i http://localhost:8080/api/products
 
 ```
 HTTP/1.1 200 OK
-X-Correlation-Id: dd3f17e2-a458-428f-a734-4d4621704bfc
+X-Correlation-Id: c5a4da86-ca4f-4026-bf70-25c0c7e48467
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Vary: Accept-Encoding
@@ -47,9 +47,9 @@ curl -I http://localhost:8080/api/products
 
 ```
 HTTP/1.1 200 OK
-X-Correlation-Id: 900fa95d-3b0b-4e22-9fa1-1ab3ae3dcde0
+X-Correlation-Id: 3f49913d-8932-432d-9ed6-ae3f484d6b1e
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Vary: Accept-Encoding
@@ -68,9 +68,9 @@ curl -i -X POST http://localhost:8080/api/products \
 ```
 HTTP/1.1 401 Unauthorized
 WWW-Authenticate: ApiKey realm="shop"
-X-Correlation-Id: 195c320b-4ae9-4379-a15d-0b691eac82b2
+X-Correlation-Id: 79f92278-e573-445e-bdbf-d0321f685af3
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Content-Type: application/problem+json
@@ -90,9 +90,9 @@ curl -i -X POST http://localhost:8080/api/products \
 ```
 HTTP/1.1 401 Unauthorized
 WWW-Authenticate: ApiKey realm="shop"
-X-Correlation-Id: 568dce99-1525-4179-9a24-3a7ed23cb4bc
+X-Correlation-Id: d1206f8d-54ab-4bcd-99f9-84d8edf59b28
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Content-Type: application/problem+json
@@ -112,9 +112,9 @@ curl -i -X POST http://localhost:8080/api/products \
 ```
 HTTP/1.1 201 Created
 Location: http://localhost:8080/api/products/4
-X-Correlation-Id: 127c72f4-5930-48c9-95d5-2fccc9f540ea
+X-Correlation-Id: b0d3fed6-7a0c-4b5c-8db8-b0da5d55d577
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Content-Type: application/json
@@ -132,9 +132,9 @@ curl -i -X DELETE http://localhost:8080/api/products/4
 ```
 HTTP/1.1 401 Unauthorized
 WWW-Authenticate: ApiKey realm="shop"
-X-Correlation-Id: b70d9518-0e15-4217-8931-6a207f1e4d33
+X-Correlation-Id: 8358521c-a4cb-409c-9278-74bffbef7688
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Content-Type: application/problem+json
@@ -151,15 +151,36 @@ curl -i -X DELETE http://localhost:8080/api/products/4 -H "X-Api-Key: demo-123"
 
 ```
 HTTP/1.1 204 No Content
-X-Correlation-Id: a9b5996c-e7c0-4a61-b979-8e2ce2df2e4f
+X-Correlation-Id: 32612d1c-a3d0-4d79-a55e-317400057b61
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 ```
 
+### 1.8 POST to an unmatched path without key → 401, not 404 (`ApiKeyFilter` is `@PreMatching`)
 
-### 1.8 Comma-separated keys: `shop.api.keys=alpha-1,beta-2`
+```bash
+curl -i -X POST http://localhost:8080/api/no-such-resource \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+```
+HTTP/1.1 401 Unauthorized
+WWW-Authenticate: ApiKey realm="shop"
+X-Correlation-Id: f818ed11-8e3d-4c3b-8380-e9a3341b2c22
+Access-Control-Allow-Origin: http://localhost:5173
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
+Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
+Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
+Content-Type: application/problem+json
+Content-Length: 140
+
+{"detail":"Missing or invalid X-Api-Key header","instance":"/api/no-such-resource","status":401,"title":"Unauthorized","type":"about:blank"}
+```
+
+
+### 1.9 Comma-separated keys: `shop.api.keys=alpha-1,beta-2`
 
 Server restarted with:
 
@@ -178,9 +199,9 @@ curl -i -X POST http://localhost:8080/api/products \
 ```
 HTTP/1.1 201 Created
 Location: http://localhost:8080/api/products/4
-X-Correlation-Id: b4c0506f-47e8-4302-8409-054706b4cb0c
+X-Correlation-Id: 1e509205-daa4-4b2b-b733-335164d12f96
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Content-Type: application/json
@@ -200,9 +221,9 @@ curl -i -X POST http://localhost:8080/api/products \
 ```
 HTTP/1.1 201 Created
 Location: http://localhost:8080/api/products/5
-X-Correlation-Id: e5432ceb-1e3c-4a76-889c-1ce849924ae8
+X-Correlation-Id: 72b05306-f000-4734-8cae-f6e03d90a68d
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Content-Type: application/json
@@ -222,9 +243,9 @@ curl -i -X POST http://localhost:8080/api/products \
 ```
 HTTP/1.1 401 Unauthorized
 WWW-Authenticate: ApiKey realm="shop"
-X-Correlation-Id: 25397b5a-4fd5-4da1-a440-69bd6a618ef2
+X-Correlation-Id: 959946a4-fc9f-46ad-a484-7f62712c1ab8
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Content-Type: application/problem+json
@@ -236,9 +257,9 @@ Content-Length: 132
 Access log of the restarted server:
 
 ```
-INFO [edu.itc.shop.access] POST /api/products -> 201 [b4c0506f-47e8-4302-8409-054706b4cb0c] 37 ms
-INFO [edu.itc.shop.access] POST /api/products -> 201 [e5432ceb-1e3c-4a76-889c-1ce849924ae8] 2 ms
-INFO [edu.itc.shop.access] POST /api/products -> 401 [25397b5a-4fd5-4da1-a440-69bd6a618ef2] 3 ms
+INFO [edu.itc.shop.access] POST /api/products -> 201 [1e509205-daa4-4b2b-b733-335164d12f96] 32 ms
+INFO [edu.itc.shop.access] POST /api/products -> 201 [72b05306-f000-4734-8cae-f6e03d90a68d] 1 ms
+INFO [edu.itc.shop.access] POST /api/products -> 401 [959946a4-fc9f-46ad-a484-7f62712c1ab8] 1 ms
 ```
 
 
@@ -254,7 +275,7 @@ curl -i http://localhost:8080/api/products/1 -H "X-Correlation-Id: trace-42"
 HTTP/1.1 200 OK
 X-Correlation-Id: trace-42
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Content-Type: application/json
@@ -271,9 +292,9 @@ curl -i http://localhost:8080/api/products/1 -H "X-Correlation-Id: bad id<script
 
 ```
 HTTP/1.1 200 OK
-X-Correlation-Id: 4170b4f5-8f2c-41a2-b259-4b50668302f4
+X-Correlation-Id: 906460a6-d8c0-43da-bb01-f3a7e26a1d74
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Content-Type: application/json
@@ -295,7 +316,7 @@ HTTP/1.1 401 Unauthorized
 WWW-Authenticate: ApiKey realm="shop"
 X-Correlation-Id: trace-401
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Content-Type: application/problem+json
@@ -314,7 +335,7 @@ curl -i http://localhost:8080/api/products/999 -H "X-Correlation-Id: trace-404"
 HTTP/1.1 404 Not Found
 X-Correlation-Id: trace-404
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Content-Type: application/problem+json
@@ -339,9 +360,9 @@ curl -i -X OPTIONS http://localhost:8080/api/products \
 
 ```
 HTTP/1.1 200 OK
-X-Correlation-Id: 8f856c17-e337-4be1-9760-c14671fe4d6c
+X-Correlation-Id: 654ad69f-f752-4433-b3d8-54bc8bf99679
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Content-Length: 0
@@ -355,9 +376,9 @@ curl -i http://localhost:8080/api/products/1 -H "Origin: http://localhost:5173"
 
 ```
 HTTP/1.1 200 OK
-X-Correlation-Id: 681b95d8-2d49-40f3-9e90-2a0f16794aeb
+X-Correlation-Id: 781af9b8-b8cb-448c-a5f1-7f30a0e3a1f0
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Content-Type: application/json
@@ -375,9 +396,9 @@ curl -i -X DELETE http://localhost:8080/api/products/1 -H "Origin: http://localh
 ```
 HTTP/1.1 401 Unauthorized
 WWW-Authenticate: ApiKey realm="shop"
-X-Correlation-Id: 1797036c-0ed5-4984-bbef-b6b12717f22c
+X-Correlation-Id: ad449504-7164-40bb-ad27-91b2df51e37e
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Content-Type: application/problem+json
@@ -398,9 +419,9 @@ file /tmp/list.gz; gunzip -c /tmp/list.gz
 
 ```
 HTTP/1.1 200 OK
-X-Correlation-Id: e9750a6f-f168-44c8-aa3f-d4d61da8b6d8
+X-Correlation-Id: 526d044a-73c9-46a8-8f05-92c875547433
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Vary: Accept-Encoding
@@ -420,9 +441,9 @@ curl -i --compressed http://localhost:8080/api/products
 
 ```
 HTTP/1.1 200 OK
-X-Correlation-Id: da5349b4-3f5d-479e-99cd-28f1dd0409e8
+X-Correlation-Id: 4924a130-08cb-41ad-b0ca-a53dcdb7abd8
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Vary: Accept-Encoding
@@ -441,9 +462,9 @@ curl -i http://localhost:8080/api/products -H "Accept-Encoding: gzip;q=0"
 
 ```
 HTTP/1.1 200 OK
-X-Correlation-Id: a4c85986-3261-4a26-b3a2-4ea410759671
+X-Correlation-Id: 6f3d4c99-2178-49b1-9908-8dbbefb80c60
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Vary: Accept-Encoding
@@ -461,9 +482,9 @@ curl -i http://localhost:8080/api/products/1 -H "Accept-Encoding: gzip"
 
 ```
 HTTP/1.1 200 OK
-X-Correlation-Id: c3b39aea-a399-4053-8f7d-fb0995a5898d
+X-Correlation-Id: 722d3f69-aa25-4043-ba3e-5bd8131cc20d
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Content-Type: application/json
@@ -487,16 +508,16 @@ curl -i -X POST http://localhost:8080/api/products \
 
 ```
 HTTP/1.1 400 Bad Request
-X-Correlation-Id: 474ad5c2-05a0-4cba-8e70-f0312cb97ecf
+X-Correlation-Id: 2a44698b-c513-4e54-8532-94fc403e396c
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Content-Type: application/problem+json
 Connection: close
 Content-Length: 353
 
-{"detail":"One or more fields are invalid","errors":[{"field":"create.arg0.sku","message":"must match \"[A-Z]{2}-\\d{2}\""},{"field":"create.arg0.price","message":"must be greater than or equal to 0.01"},{"field":"create.arg0.name","message":"must not be blank"}],"instance":"/api/products","status":400,"title":"Validation Failed","type":"about:blank"}
+{"detail":"One or more fields are invalid","errors":[{"field":"create.arg0.name","message":"must not be blank"},{"field":"create.arg0.sku","message":"must match \"[A-Z]{2}-\\d{2}\""},{"field":"create.arg0.price","message":"must be greater than or equal to 0.01"}],"instance":"/api/products","status":400,"title":"Validation Failed","type":"about:blank"}
 ```
 
 ### 5.2 Money param converter → 400
@@ -507,9 +528,9 @@ curl -i "http://localhost:8080/api/products?minPrice=abc"
 
 ```
 HTTP/1.1 400 Bad Request
-X-Correlation-Id: 72cfe66d-9cd3-427f-8b64-f51b9502101a
+X-Correlation-Id: 3d40ef0d-a61b-4fff-8df5-d83a8e79b63b
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Vary: Accept-Encoding
@@ -528,9 +549,9 @@ curl -i "http://localhost:8080/api/products?q=tea&sort=name,asc"
 
 ```
 HTTP/1.1 200 OK
-X-Correlation-Id: 9fe0991e-bc24-4023-8299-8bf1b019571f
+X-Correlation-Id: 0e42d4dc-bd98-4bd6-90b8-5e212153c3a0
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Vary: Accept-Encoding
@@ -548,9 +569,9 @@ curl -i "http://localhost:8080/api/products?sort=colour,asc"
 
 ```
 HTTP/1.1 400 Bad Request
-X-Correlation-Id: 28bebca4-3728-4e0d-a23a-8043cf719a28
+X-Correlation-Id: 3c220dfa-1b49-41f7-96ff-ff38e64a0868
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Vary: Accept-Encoding
@@ -571,9 +592,9 @@ curl -i -X PUT http://localhost:8080/api/products/2 \
 
 ```
 HTTP/1.1 200 OK
-X-Correlation-Id: 084b4f6f-30b3-49cb-834f-9d0649461483
+X-Correlation-Id: 36d92970-a146-4635-98cb-45f9b9d33107
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Content-Type: application/json
@@ -591,9 +612,9 @@ curl -i -X PATCH http://localhost:8080/api/products/3/stock \
 
 ```
 HTTP/1.1 409 Conflict
-X-Correlation-Id: 18b1e729-4bbb-4052-a53c-09536a0f5730
+X-Correlation-Id: 48195250-63b9-4bca-9b72-dc3a135fdde2
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Content-Type: application/problem+json
@@ -610,9 +631,9 @@ curl -i http://localhost:8080/api/products/2 -H "Accept: application/xml"
 
 ```
 HTTP/1.1 200 OK
-X-Correlation-Id: 63727247-04c5-4f1d-8e8b-684085103501
+X-Correlation-Id: 914f3f79-dd43-46ff-b3f1-d17fd2ce7c2a
 Access-Control-Allow-Origin: http://localhost:5173
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE
 Access-Control-Allow-Headers: Content-Type,X-Api-Key,X-Correlation-Id,If-Match
 Access-Control-Expose-Headers: Location,ETag,Link,X-Total-Count,X-Correlation-Id
 Content-Type: application/xml
@@ -624,36 +645,37 @@ Content-Length: 153
 
 ## 6. Access log — one line per request
 
-Server log (`edu.itc.shop.access`) for sections 1.1–5.7 (excluding 1.8), in request order:
+Server log (`edu.itc.shop.access`, written via `System.Logger`) for sections 1.1–5.7 (excluding 1.9), in request order; the path is logged without the query string:
 
 ```
-INFO [edu.itc.shop.access] GET /api/products -> 200 [dd3f17e2-a458-428f-a734-4d4621704bfc] 1 ms
-INFO [edu.itc.shop.access] HEAD /api/products -> 200 [900fa95d-3b0b-4e22-9fa1-1ab3ae3dcde0] 1 ms
-INFO [edu.itc.shop.access] POST /api/products -> 401 [195c320b-4ae9-4379-a15d-0b691eac82b2] 1 ms
-INFO [edu.itc.shop.access] POST /api/products -> 401 [568dce99-1525-4179-9a24-3a7ed23cb4bc] 0 ms
-INFO [edu.itc.shop.access] POST /api/products -> 201 [127c72f4-5930-48c9-95d5-2fccc9f540ea] 27 ms
-INFO [edu.itc.shop.access] DELETE /api/products/4 -> 401 [b70d9518-0e15-4217-8931-6a207f1e4d33] 0 ms
-INFO [edu.itc.shop.access] DELETE /api/products/4 -> 204 [a9b5996c-e7c0-4a61-b979-8e2ce2df2e4f] 3 ms
-INFO [edu.itc.shop.access] GET /api/products/1 -> 200 [trace-42] 1 ms
-INFO [edu.itc.shop.access] GET /api/products/1 -> 200 [4170b4f5-8f2c-41a2-b259-4b50668302f4] 0 ms
+INFO [edu.itc.shop.access] GET /api/products -> 200 [c5a4da86-ca4f-4026-bf70-25c0c7e48467] 1 ms
+INFO [edu.itc.shop.access] HEAD /api/products -> 200 [3f49913d-8932-432d-9ed6-ae3f484d6b1e] 1 ms
+INFO [edu.itc.shop.access] POST /api/products -> 401 [79f92278-e573-445e-bdbf-d0321f685af3] 1 ms
+INFO [edu.itc.shop.access] POST /api/products -> 401 [d1206f8d-54ab-4bcd-99f9-84d8edf59b28] 0 ms
+INFO [edu.itc.shop.access] POST /api/products -> 201 [b0d3fed6-7a0c-4b5c-8db8-b0da5d55d577] 28 ms
+INFO [edu.itc.shop.access] DELETE /api/products/4 -> 401 [8358521c-a4cb-409c-9278-74bffbef7688] 0 ms
+INFO [edu.itc.shop.access] DELETE /api/products/4 -> 204 [32612d1c-a3d0-4d79-a55e-317400057b61] 3 ms
+INFO [edu.itc.shop.access] GET /api/products/1 -> 200 [trace-42] 0 ms
+INFO [edu.itc.shop.access] GET /api/products/1 -> 200 [906460a6-d8c0-43da-bb01-f3a7e26a1d74] 0 ms
 INFO [edu.itc.shop.access] POST /api/products -> 401 [trace-401] 0 ms
-INFO [edu.itc.shop.access] GET /api/products/999 -> 404 [trace-404] 6 ms
-INFO [edu.itc.shop.access] OPTIONS /api/products -> 200 [8f856c17-e337-4be1-9760-c14671fe4d6c] 0 ms
-INFO [edu.itc.shop.access] GET /api/products/1 -> 200 [681b95d8-2d49-40f3-9e90-2a0f16794aeb] 0 ms
-INFO [edu.itc.shop.access] DELETE /api/products/1 -> 401 [1797036c-0ed5-4984-bbef-b6b12717f22c] 0 ms
-INFO [edu.itc.shop.access] GET /api/products -> 200 [e9750a6f-f168-44c8-aa3f-d4d61da8b6d8] 1 ms
-INFO [edu.itc.shop.access] GET /api/products -> 200 [da5349b4-3f5d-479e-99cd-28f1dd0409e8] 1 ms
-INFO [edu.itc.shop.access] GET /api/products -> 200 [a4c85986-3261-4a26-b3a2-4ea410759671] 1 ms
-INFO [edu.itc.shop.access] GET /api/products/1 -> 200 [c3b39aea-a399-4053-8f7d-fb0995a5898d] 0 ms
-INFO [edu.itc.shop.access] POST /api/products -> 400 [474ad5c2-05a0-4cba-8e70-f0312cb97ecf] 33 ms
-INFO [edu.itc.shop.access] GET /api/products?minPrice=abc -> 400 [72cfe66d-9cd3-427f-8b64-f51b9502101a] 4 ms
-INFO [edu.itc.shop.access] GET /api/products?q=tea&sort=name,asc -> 200 [9fe0991e-bc24-4023-8299-8bf1b019571f] 1 ms
-INFO [edu.itc.shop.access] GET /api/products?sort=colour,asc -> 400 [28bebca4-3728-4e0d-a23a-8043cf719a28] 1 ms
-INFO [edu.itc.shop.access] PUT /api/products/2 -> 200 [084b4f6f-30b3-49cb-834f-9d0649461483] 2 ms
-INFO [edu.itc.shop.access] PATCH /api/products/3/stock -> 409 [18b1e729-4bbb-4052-a53c-09536a0f5730] 18 ms
-INFO [edu.itc.shop.access] GET /api/products/2 -> 200 [63727247-04c5-4f1d-8e8b-684085103501] 0 ms
+INFO [edu.itc.shop.access] GET /api/products/999 -> 404 [trace-404] 5 ms
+INFO [edu.itc.shop.access] OPTIONS /api/products -> 200 [654ad69f-f752-4433-b3d8-54bc8bf99679] 0 ms
+INFO [edu.itc.shop.access] GET /api/products/1 -> 200 [781af9b8-b8cb-448c-a5f1-7f30a0e3a1f0] 0 ms
+INFO [edu.itc.shop.access] DELETE /api/products/1 -> 401 [ad449504-7164-40bb-ad27-91b2df51e37e] 0 ms
+INFO [edu.itc.shop.access] GET /api/products -> 200 [526d044a-73c9-46a8-8f05-92c875547433] 0 ms
+INFO [edu.itc.shop.access] GET /api/products -> 200 [4924a130-08cb-41ad-b0ca-a53dcdb7abd8] 1 ms
+INFO [edu.itc.shop.access] GET /api/products -> 200 [6f3d4c99-2178-49b1-9908-8dbbefb80c60] 1 ms
+INFO [edu.itc.shop.access] GET /api/products/1 -> 200 [722d3f69-aa25-4043-ba3e-5bd8131cc20d] 0 ms
+INFO [edu.itc.shop.access] POST /api/products -> 400 [2a44698b-c513-4e54-8532-94fc403e396c] 36 ms
+INFO [edu.itc.shop.access] GET /api/products -> 400 [3d40ef0d-a61b-4fff-8df5-d83a8e79b63b] 4 ms
+INFO [edu.itc.shop.access] GET /api/products -> 200 [0e42d4dc-bd98-4bd6-90b8-5e212153c3a0] 1 ms
+INFO [edu.itc.shop.access] GET /api/products -> 400 [3c220dfa-1b49-41f7-96ff-ff38e64a0868] 1 ms
+INFO [edu.itc.shop.access] PUT /api/products/2 -> 200 [36d92970-a146-4635-98cb-45f9b9d33107] 2 ms
+INFO [edu.itc.shop.access] PATCH /api/products/3/stock -> 409 [48195250-63b9-4bca-9b72-dc3a135fdde2] 16 ms
+INFO [edu.itc.shop.access] GET /api/products/2 -> 200 [914f3f79-dd43-46ff-b3f1-d17fd2ce7c2a] 0 ms
+INFO [edu.itc.shop.access] POST /api/no-such-resource -> 401 [f818ed11-8e3d-4c3b-8380-e9a3341b2c22] 0 ms
 ```
 
-25 HTTP requests → 25 access-log lines, including every 401 and the preflight (4.1 is one request; `file`/`gunzip` run locally).
+26 HTTP requests → 26 access-log lines, including every 401 and the preflight (4.1 is one request; `file`/`gunzip` run locally; the last line is 1.8, run at the end of the session).
 
 After `minPrice=abc` Jersey additionally prints its own HK2 `WARNING` stack trace for the converter's `BadRequestException`; this is pre-existing Task 3 behaviour and the client still receives the 400 problem response.

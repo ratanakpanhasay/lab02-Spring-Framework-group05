@@ -1,9 +1,9 @@
 package edu.itc.shop.api.filters;
 
-import java.net.URI;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 import jakarta.annotation.Priority;
@@ -23,7 +23,7 @@ public class CorrelationFilter implements ContainerRequestFilter, ContainerRespo
 
     static final String PROPERTY = "correlationId";
 
-    private static final Logger ACCESS_LOG = Logger.getLogger(ACCESS_LOGGER);
+    private static final Logger ACCESS_LOG = System.getLogger(ACCESS_LOGGER);
     private static final Pattern SAFE_ID = Pattern.compile("[A-Za-z0-9._-]{1,64}");
 
     @Override
@@ -38,14 +38,11 @@ public class CorrelationFilter implements ContainerRequestFilter, ContainerRespo
         String id = stored != null ? stored.toString() : resolveId(request);
         response.getHeaders().putSingle(HEADER, id);
 
-        URI uri = request.getUriInfo().getRequestUri();
-        String target = uri.getRawQuery() == null
-                ? uri.getRawPath()
-                : uri.getRawPath() + "?" + uri.getRawQuery();
+        String path = request.getUriInfo().getRequestUri().getRawPath();
         int status = response.getStatus();
         long durationMs = elapsedMillis(request);
-        ACCESS_LOG.info(() -> "%s %s -> %d [%s] %d ms".formatted(
-                request.getMethod(), target, status, id, durationMs));
+        ACCESS_LOG.log(Level.INFO, () -> "%s %s -> %d [%s] %d ms".formatted(
+                request.getMethod(), path, status, id, durationMs));
     }
 
     private static long elapsedMillis(ContainerRequestContext request) {
