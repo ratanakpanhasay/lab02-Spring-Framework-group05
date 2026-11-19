@@ -1,40 +1,55 @@
 package edu.itc.shop.api.filters;
 
+import java.net.URI;
 import java.util.UUID;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 import jakarta.annotation.Priority;
+import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.container.ContainerResponseFilter;
-import jakarta.ws.rs.container.PreMatching;
 import jakarta.ws.rs.ext.Provider;
 
 @Provider
-@PreMatching
-@Priority(100)
+@Priority(Priorities.USER)
 public class CorrelationFilter implements ContainerRequestFilter, ContainerResponseFilter {
 
     public static final String HEADER = "X-Correlation-Id";
-    public static final String PROPERTY = "correlationId";
+    public static final String ACCESS_LOGGER = "edu.itc.shop.access";
 
+    static final String PROPERTY = "correlationId";
+
+    private static final Logger ACCESS_LOG = Logger.getLogger(ACCESS_LOGGER);
     private static final Pattern SAFE_ID = Pattern.compile("[A-Za-z0-9._-]{1,64}");
 
     @Override
     public void filter(ContainerRequestContext request) {
-        String incoming = request.getHeaderString(HEADER);
-        String id = incoming != null && SAFE_ID.matcher(incoming).matches()
-                ? incoming
-                : UUID.randomUUID().toString();
-        request.setProperty(PROPERTY, id);
+        request.setProperty(PROPERTY, resolveId(request));
     }
 
     @Override
     public void filter(ContainerRequestContext request, ContainerResponseContext response) {
-        Object id = request.getProperty(PROPERTY);
-        if (id != null) {
-            response.getHeaders().putSingle(HEADER, id);
-        }
+        // Absent when an earlier filter (CORS preflight, ApiKeyFilter) aborted the request.
+        Object stored = request.getProperty(PROPERTY);
+        String id = stored != null ? stored.toString() : resolveId(request);
+        response.getHeaders().putSingle(HEADER, id);
+
+        URI uri = request.getUriInfo().getRequestUri();
+        String target = uri.getRawQuery() == null
+                ? uri.getRawPath()
+                : uri.getRawPath() + "?" + uri.getRawQuery();
+        int status = response.getStatus();
+        ACCESS_LOG.info(() -> "%s %s -> %d cid=%s".formatted(
+                request.getMethod(), target, status, id));
+    }
+
+    private static String resolveId(ContainerRequestContext request) {
+        String incoming = request.getHeaderString(HEADER);
+        return incoming != null && SAFE_ID.matcher(incoming).matches()
+                ? incoming
+                : UUID.randomUUID().toString();
     }
 }

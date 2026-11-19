@@ -2,7 +2,9 @@ package edu.itc.shop.api.filters;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.Arrays;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import edu.itc.shop.api.dto.Problem;
 import jakarta.annotation.Priority;
@@ -17,27 +19,30 @@ import jakarta.ws.rs.ext.Provider;
 @Priority(Priorities.AUTHENTICATION)
 public class ApiKeyFilter implements ContainerRequestFilter {
 
-    public static final String HEADER = "X-API-Key";
+    public static final String HEADER = "X-Api-Key";
+    public static final String KEYS_PROPERTY = "shop.api.keys";
+    public static final String DEFAULT_KEYS = "demo-123";
 
-    private static final Set<String> SAFE_METHODS =
+    private static final Set<String> PUBLIC_METHODS =
             Set.of(HttpMethod.GET, HttpMethod.HEAD, HttpMethod.OPTIONS);
 
-    private final byte[] expectedKey = expectedKey().getBytes(StandardCharsets.UTF_8);
+    private final Set<String> validKeys =
+            parseKeys(System.getProperty(KEYS_PROPERTY, DEFAULT_KEYS));
 
-    static String expectedKey() {
-        String fromEnv = System.getenv("SHOP_API_KEY");
-        return fromEnv != null && !fromEnv.isBlank() ? fromEnv : "dev-secret";
+    static Set<String> parseKeys(String raw) {
+        return Arrays.stream(raw.split(","))
+                .map(String::trim)
+                .filter(key -> !key.isEmpty())
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     @Override
     public void filter(ContainerRequestContext request) {
-        if (SAFE_METHODS.contains(request.getMethod())) {
+        if (PUBLIC_METHODS.contains(request.getMethod())) {
             return;
         }
 
-        String supplied = request.getHeaderString(HEADER);
-        if (supplied == null || !MessageDigest.isEqual(
-                supplied.getBytes(StandardCharsets.UTF_8), expectedKey)) {
+        if (!isValid(request.getHeaderString(HEADER))) {
             Problem problem = new Problem(
                     "about:blank",
                     "Unauthorized",
@@ -46,10 +51,22 @@ public class ApiKeyFilter implements ContainerRequestFilter {
                     request.getUriInfo().getRequestUri().getPath(),
                     null);
             request.abortWith(Response.status(Response.Status.UNAUTHORIZED)
-                    .header("WWW-Authenticate", "ApiKey header=\"" + HEADER + "\"")
+                    .header("WWW-Authenticate", "ApiKey realm=\"shop-rest\"")
                     .type("application/problem+json")
                     .entity(problem)
                     .build());
         }
+    }
+
+    private boolean isValid(String supplied) {
+        if (supplied == null) {
+            return false;
+        }
+        byte[] candidate = supplied.getBytes(StandardCharsets.UTF_8);
+        boolean match = false;
+        for (String key : validKeys) {
+            match |= MessageDigest.isEqual(candidate, key.getBytes(StandardCharsets.UTF_8));
+        }
+        return match;
     }
 }

@@ -83,7 +83,6 @@ public class ProductResource {
 
     // GET /products/{id}
     @GET
-    @Compress
     @Path("{id: \\d+}")
     public ProductDto one(@PathParam("id") long id) {
         return ProductDto.from(service.get(id));
