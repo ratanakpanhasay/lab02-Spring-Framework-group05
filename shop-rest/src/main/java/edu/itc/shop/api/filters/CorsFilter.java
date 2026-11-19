@@ -16,9 +16,8 @@ public class CorsFilter implements ContainerRequestFilter, ContainerResponseFilt
 
     public static final String ALLOWED_ORIGIN = "http://localhost:5173";
     public static final String ALLOWED_METHODS = "GET, POST, PUT, PATCH, DELETE, OPTIONS";
-    public static final String ALLOWED_HEADERS =
-            "Content-Type, Accept, Accept-Encoding, X-Api-Key, X-Correlation-Id";
-    public static final String EXPOSED_HEADERS = "Location, X-Correlation-Id";
+    public static final String ALLOWED_HEADERS = "Content-Type,X-Api-Key,X-Correlation-Id,If-Match";
+    public static final String EXPOSED_HEADERS = "Location,ETag,Link,X-Total-Count,X-Correlation-Id";
 
     @Override
     public void filter(ContainerRequestContext request) {

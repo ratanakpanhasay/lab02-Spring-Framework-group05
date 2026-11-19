@@ -2,6 +2,7 @@ package edu.itc.shop.api.filters;
 
 import java.net.URI;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
@@ -42,8 +43,16 @@ public class CorrelationFilter implements ContainerRequestFilter, ContainerRespo
                 ? uri.getRawPath()
                 : uri.getRawPath() + "?" + uri.getRawQuery();
         int status = response.getStatus();
-        ACCESS_LOG.info(() -> "%s %s -> %d cid=%s".formatted(
-                request.getMethod(), target, status, id));
+        long durationMs = elapsedMillis(request);
+        ACCESS_LOG.info(() -> "%s %s -> %d [%s] %d ms".formatted(
+                request.getMethod(), target, status, id, durationMs));
+    }
+
+    private static long elapsedMillis(ContainerRequestContext request) {
+        Object start = request.getProperty(RequestTimingFilter.START_PROPERTY);
+        return start instanceof Long nanos
+                ? TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - nanos)
+                : 0;
     }
 
     private static String resolveId(ContainerRequestContext request) {

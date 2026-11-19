@@ -77,8 +77,10 @@ class ProvidersTest extends JerseyTest {
     private static void assertCorsHeaders(Response r) {
         assertEquals(CorsFilter.ALLOWED_ORIGIN, r.getHeaderString("Access-Control-Allow-Origin"));
         assertEquals(CorsFilter.ALLOWED_METHODS, r.getHeaderString("Access-Control-Allow-Methods"));
-        assertEquals(CorsFilter.ALLOWED_HEADERS, r.getHeaderString("Access-Control-Allow-Headers"));
-        assertEquals(CorsFilter.EXPOSED_HEADERS, r.getHeaderString("Access-Control-Expose-Headers"));
+        assertEquals("Content-Type,X-Api-Key,X-Correlation-Id,If-Match",
+                r.getHeaderString("Access-Control-Allow-Headers"));
+        assertEquals("Location,ETag,Link,X-Total-Count,X-Correlation-Id",
+                r.getHeaderString("Access-Control-Expose-Headers"));
     }
 
     // --- API key ---
@@ -94,7 +96,7 @@ class ProvidersTest extends JerseyTest {
         Response r = createProduct(null);
         assertEquals(401, r.getStatus());
         assertEquals("application/problem+json", r.getMediaType().toString());
-        assertNotNull(r.getHeaderString("WWW-Authenticate"));
+        assertEquals("ApiKey realm=\"shop\"", r.getHeaderString("WWW-Authenticate"));
         assertTrue(r.readEntity(String.class).contains("\"status\":401"));
     }
 
@@ -102,7 +104,7 @@ class ProvidersTest extends JerseyTest {
     void writeWithWrongApiKeyIs401() {
         Response r = createProduct("wrong");
         assertEquals(401, r.getStatus());
-        assertNotNull(r.getHeaderString("WWW-Authenticate"));
+        assertEquals("ApiKey realm=\"shop\"", r.getHeaderString("WWW-Authenticate"));
     }
 
     @Test
@@ -195,9 +197,9 @@ class ProvidersTest extends JerseyTest {
                 .options();
 
         assertEquals(3, accessLog.size(), accessLog.toString());
-        assertEquals("GET /products -> 200 cid=log-1", accessLog.get(0).replace("/api", ""));
-        assertTrue(accessLog.get(1).matches("POST /\\S*products -> 401 cid=\\S+"), accessLog.get(1));
-        assertTrue(accessLog.get(2).matches("OPTIONS /\\S*products -> 200 cid=log-3"), accessLog.get(2));
+        assertTrue(accessLog.get(0).matches("GET /\\S*products -> 200 \\[log-1] \\d+ ms"), accessLog.get(0));
+        assertTrue(accessLog.get(1).matches("POST /\\S*products -> 401 \\[[\\w-]+] \\d+ ms"), accessLog.get(1));
+        assertTrue(accessLog.get(2).matches("OPTIONS /\\S*products -> 200 \\[log-3] \\d+ ms"), accessLog.get(2));
     }
 
     @Test

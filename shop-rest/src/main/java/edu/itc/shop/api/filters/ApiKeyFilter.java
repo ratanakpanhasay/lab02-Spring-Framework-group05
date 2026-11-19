@@ -51,7 +51,7 @@ public class ApiKeyFilter implements ContainerRequestFilter {
                     request.getUriInfo().getRequestUri().getPath(),
                     null);
             request.abortWith(Response.status(Response.Status.UNAUTHORIZED)
-                    .header("WWW-Authenticate", "ApiKey realm=\"shop-rest\"")
+                    .header("WWW-Authenticate", "ApiKey realm=\"shop\"")
                     .type("application/problem+json")
                     .entity(problem)
                     .build());
