@@ -6,6 +6,7 @@ import java.util.List;
 
 import edu.itc.shop.api.dto.ProductDto;
 import edu.itc.shop.api.dto.StockChange;
+import edu.itc.shop.api.filters.Compress;
 import edu.itc.shop.api.params.ProductFilter;
 import edu.itc.shop.domain.Product;
 import edu.itc.shop.domain.ProductService;
@@ -43,6 +44,7 @@ public class ProductResource {
     // GET /products — list all
     
     @GET
+    @Compress
     public List<ProductDto> list(@BeanParam @Valid ProductFilter f) {
         if (f.minPrice != null && !"EUR".equals(f.minPrice.currency())) {
             throw new BadRequestException("minPrice must use EUR");
@@ -81,6 +83,7 @@ public class ProductResource {
 
     // GET /products/{id}
     @GET
+    @Compress
     @Path("{id: \\d+}")
     public ProductDto one(@PathParam("id") long id) {
         return ProductDto.from(service.get(id));
