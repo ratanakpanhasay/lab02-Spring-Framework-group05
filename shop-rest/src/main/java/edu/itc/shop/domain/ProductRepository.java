@@ -14,6 +14,11 @@ public interface ProductRepository {
 
     Product save(Product product);
 
+    Optional<Product> updateIfVersionMatches(
+        Product product,
+        int expectedVersion
+    );
+
     boolean delete(long id);
 }
 

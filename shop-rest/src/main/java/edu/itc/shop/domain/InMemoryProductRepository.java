@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class InMemoryProductRepository implements ProductRepository {
 
@@ -24,6 +25,18 @@ public class InMemoryProductRepository implements ProductRepository {
 
         save(new Product(0, "Tea", "TE-01",
                 new BigDecimal("4.20"), 0, 0));
+        
+        for (int i = 1; i <= 30; i++) {
+        save(new Product(
+                0,
+                "Sample Product " + i,
+                String.format("SP-%02d", i),
+                new BigDecimal("10.00").add(BigDecimal.valueOf(i)),
+                10 + i,
+                0
+        ));
+        }
+
     }
 
     @Override
@@ -68,6 +81,39 @@ public class InMemoryProductRepository implements ProductRepository {
             );
         });
     }
+
+
+        @Override
+        public Optional<Product> updateIfVersionMatches(
+                Product product,
+                int expectedVersion) {
+
+        AtomicReference<Product> result = new AtomicReference<>();
+
+        products.computeIfPresent(product.id(), (id, existing) -> {
+
+                // Reject an update if the version is outdated
+                if (existing.version() != expectedVersion) {
+                return existing;
+                }
+
+                // Create the updated product with the next version
+                Product updated = new Product(
+                        id,
+                        product.name(),
+                        product.sku(),
+                        product.price(),
+                        product.stock(),
+                        existing.version() + 1
+                );
+
+                result.set(updated);
+                return updated;
+        });
+
+        return Optional.ofNullable(result.get());
+        }
+
 
     @Override
     public boolean delete(long id) {
