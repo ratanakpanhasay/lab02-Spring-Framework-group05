@@ -87,6 +87,9 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.3</version>
+                <configuration>
+                    <argLine>-Dsun.net.http.allowRestrictedHeaders=true</argLine>
+                </configuration>
             </plugin>
 
             <plugin>
