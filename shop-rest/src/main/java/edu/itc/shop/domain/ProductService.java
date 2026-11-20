@@ -3,6 +3,8 @@ package edu.itc.shop.domain;
 import java.util.List;
 
 import jakarta.ws.rs.NotFoundException;
+import jakarta.ws.rs.ClientErrorException;
+
 
 public class ProductService {
     private final ProductRepository repo;
@@ -51,6 +53,35 @@ public class ProductService {
 
         return repo.save(updated);
     }
+
+
+    public Product updateIfVersionMatches(
+            long id,
+            Product product,
+            int expectedVersion) {
+
+        // Check that the product exists (404 if missing)
+        get(id);
+
+        // Check whether another product already uses this SKU
+        repo.findBySku(product.sku()).ifPresent(found -> {
+            if (found.id() != id) {
+                throw new DuplicateSkuException(product.sku());
+            }
+        });
+
+        // Perform the version check and update atomically
+        return repo.updateIfVersionMatches(
+                product,
+                expectedVersion
+        ).orElseThrow(() ->
+                new ClientErrorException(
+                        "Product version does not match",
+                        412
+                )
+        );
+    }
+
 
     // Adjust stock by delta (PATCH /stock)
     public Product changeStock(long id, int delta) {
