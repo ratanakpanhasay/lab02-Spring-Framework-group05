@@ -166,3 +166,50 @@ ID  USERNAME  PASSWORD_HASH                                                     
 3   bob       {bcrypt}$2a$10$Qm8Yy4p1mJ0k3G0G3rZbUeC7O0rX3n6nT0Ff1c9uYw1n0UQxRk5aG  TRUE
 ```
 
+## Task 3 — Roles and Method Security
+
+Verified against the running application on 2026-11-27 with a fresh in-memory
+H2 database. Alice and admin were seeded. Bob registered through `/api/register`
+and authenticated with HTTP Basic. The excerpts below show the observed status,
+selected response headers, and body for each request.
+
+### Alice creates an order
+
+`POST /api/orders` with `{"productId":1,"quantity":2}`
+
+```
+Status 201
+Content-Type: application/json
+Location: /api/orders/1
+
+{"customer":"alice","productId":1,"quantity":2,"id":1,"status":"NEW"}
+```
+
+### Bob is denied access to Alice's order
+
+`GET /api/orders/1`
+
+```
+Status 403
+Content-Type: application/problem+json
+
+{"detail":"Access denied","instance":"/api/orders/1","status":403,"title":"Forbidden"}
+```
+
+### Admin reads Alice's order
+
+`GET /api/orders/1`
+
+```
+Status 200
+Content-Type: application/json
+
+{"customer":"alice","productId":1,"quantity":2,"id":1,"status":"NEW"}
+```
+
+Additional live checks confirmed that Alice could read her own order and history.
+Bob received 403 for Alice's history, the full order list, and shipping. Admin
+could read Alice's history and the full list, and received 204 for shipping.
+Alice then read the order with status `SHIPPED`. A missing order returned 404 and
+an invalid quantity returned 400. The method-level denial matched the existing
+filter-chain denial's JSON fields.

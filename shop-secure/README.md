@@ -29,3 +29,22 @@ After restarting the application, Spring Boot configured an `InMemoryUserDetails
 | Authenticated `GET /api/products` | 200 OK with three products |
 
 The actual HTTP tests are documented in `security-session.md`.
+
+## Task 3 — Roles and Method Security
+
+Order endpoints use HTTP Basic authentication. The service enforces ownership and
+administrator permissions, with `ADMIN` implying `CUSTOMER`.
+
+| Request | Behavior |
+|---|---|
+| `POST /api/orders` | Creates an order in `NEW` status for the authenticated user and returns 201 with a `Location` header. Send a positive `productId` and `quantity` in the JSON body. |
+| `GET /api/orders` | Returns the authenticated user's order history. |
+| `GET /api/orders?customer=bob` | Returns the named customer's history to that customer or an admin. |
+| `GET /api/orders?all=true` | Returns all orders to an admin. |
+| `GET /api/orders/{id}` | Returns the order to its owner or an admin. |
+| `POST /api/orders/{id}/ship` | Lets an admin set the order status to `SHIPPED` and returns 204. |
+
+Requests without credentials return 401. Access denials return 403 with an
+`application/problem+json` body. Requests for missing orders return 404.
+
+See [security-session.md](security-session.md) for the live HTTP results.
