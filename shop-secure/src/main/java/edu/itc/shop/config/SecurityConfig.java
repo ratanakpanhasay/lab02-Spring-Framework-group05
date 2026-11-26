@@ -1,4 +1,3 @@
-
 package edu.itc.shop.config;
 
 import java.io.IOException;
@@ -15,14 +14,19 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 
 import tools.jackson.databind.json.JsonMapper;
 
+/**
+ * Task-2 security configuration.
+ *
+ * <p>The temporary {@code InMemoryUserDetailsManager} from Task 1 has been removed.
+ * Authentication is now delegated to {@link edu.itc.shop.security.JpaUserDetailsService},
+ * which is picked up automatically by Spring Security's
+ * {@link org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration}.</p>
+ */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -32,15 +36,19 @@ public class SecurityConfig {
 
         AuthenticationEntryPoint entryPoint = (request, response, ex) -> {
             response.setHeader("WWW-Authenticate", "Basic realm=\"Realm\"");
-
             writeProblem(request, response, mapper,
                     HttpStatus.UNAUTHORIZED, "Authentication required");
         };
 
         http.authorizeHttpRequests(auth -> auth
+                // Public: product catalogue reads & registration
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+                .requestMatchers("/api/register").permitAll()
+                // Role-restricted writes
                 .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
+                // Everything else under /api/** must be authenticated
                 .requestMatchers("/api/**").authenticated()
+                // Deny anything that didn't match above (defence in depth)
                 .anyRequest().denyAll()
         );
 
@@ -48,8 +56,8 @@ public class SecurityConfig {
 
         http.formLogin(form -> form.disable());
 
-        // CSRF disabled: this stateless API accepts Basic credentials,
-        // not cookie-based authentication.
+        // CSRF disabled: this chain accepts only Basic / Bearer credentials,
+        // never cookie-based session credentials, so CSRF is not applicable.
         http.csrf(csrf -> csrf.disable());
 
         http.sessionManagement(session ->
@@ -66,6 +74,8 @@ public class SecurityConfig {
         return http.build();
     }
 
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
     private static void writeProblem(
             HttpServletRequest request,
             HttpServletResponse response,
@@ -81,20 +91,5 @@ public class SecurityConfig {
         response.setContentType("application/problem+json");
         response.setCharacterEncoding("UTF-8");
         response.getWriter().write(mapper.writeValueAsString(problem));
-    }
-
-    @Bean
-    UserDetailsService temporaryUsers() {
-        return new InMemoryUserDetailsManager(
-                User.withUsername("admin")
-                        .password("{noop}admin")
-                        .roles("ADMIN")
-                        .build(),
-
-                User.withUsername("alice")
-                        .password("{noop}alice")
-                        .roles("CUSTOMER")
-                        .build()
-        );
     }
 }
