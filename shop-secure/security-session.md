@@ -86,3 +86,83 @@ Date: Thu, 26 Nov 2026 12:01:55 GMT
 
  
 ``` 
+## Task 2 — Users and Passwords in the Database
+
+### Registration: validation failure (400)
+
+```
+$ curl -i -X POST localhost:8080/api/register \
+       -H 'Content-Type: application/json' \
+       -d '{"username":"bob","password":"short"}'
+
+HTTP/1.1 400
+Content-Type: application/problem+json;charset=UTF-8
+
+{
+  "type": "about:blank",
+  "title": "Bad Request",
+  "status": 400,
+  "detail": "Validation failed",
+  "instance": "/api/register",
+  "errors": [
+    {"field": "password", "message": "size must be between 12 and 72"},
+    {"field": "password", "message": "must contain an upper-case letter, a lower-case letter and a digit"}
+  ]
+}
+```
+
+### Registration: success (201)
+
+```
+$ curl -i -X POST localhost:8080/api/register \
+       -H 'Content-Type: application/json' \
+       -d '{"username":"bob","password":"Correct-Horse-9"}'
+
+HTTP/1.1 201
+Location: /api/me
+Content-Type: application/json
+
+{"username":"bob"}
+```
+
+### GET /api/me with Basic credentials (200)
+
+```
+$ curl -i -u bob:Correct-Horse-9 localhost:8080/api/me
+
+HTTP/1.1 200
+Content-Type: application/json
+
+{"name":"bob","roles":["ROLE_CUSTOMER"]}
+```
+
+### Registration: duplicate username (409)
+
+```
+$ curl -i -X POST localhost:8080/api/register \
+       -H 'Content-Type: application/json' \
+       -d '{"username":"bob","password":"Correct-Horse-9"}'
+
+HTTP/1.1 409
+Content-Type: application/problem+json;charset=UTF-8
+
+{
+  "type": "about:blank",
+  "title": "Conflict",
+  "status": 409,
+  "detail": "Username already taken: bob",
+  "instance": "/api/register"
+}
+```
+
+### USER_ACCOUNT table — bcrypt hash evidence
+
+The following row was retrieved from the in-memory H2 database after registering `bob`.
+It confirms that the `DelegatingPasswordEncoder` stores passwords as `{bcrypt}$2a$10$…`
+and that the raw password is **never** stored.
+
+```
+ID  USERNAME  PASSWORD_HASH                                                              ENABLED
+3   bob       {bcrypt}$2a$10$Qm8Yy4p1mJ0k3G0G3rZbUeC7O0rX3n6nT0Ff1c9uYw1n0UQxRk5aG  TRUE
+```
+
