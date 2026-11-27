@@ -2,10 +2,10 @@ package edu.itc.shop.config;
 
 import java.io.IOException;
 import java.net.URI;
-
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
+import org.springframework.security.config.Customizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -17,15 +17,16 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
-
+import org.springframework.core.annotation.Order;
 import tools.jackson.databind.json.JsonMapper;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Bean
-    SecurityFilterChain api(
+        @Bean
+        @Order(1)
+        SecurityFilterChain api(
             HttpSecurity http,
             JsonMapper mapper,
             JwtAuthenticationConverter jwtAuthenticationConverter)
@@ -36,8 +37,22 @@ public class SecurityConfig {
             writeProblem(request, response, mapper,
                     HttpStatus.UNAUTHORIZED, "Authentication required");
         };
-
-        http.authorizeHttpRequests(auth -> auth
+                http.securityMatcher("/api/**");
+                http.cors(Customizer.withDefaults());
+                // Security headers (Task 5)
+                http.headers(headers -> headers
+                        .frameOptions(frame -> frame.deny())
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .includeSubDomains(true)
+                                .maxAgeInSeconds(31_536_000))
+                        .contentSecurityPolicy(csp -> csp
+                                .policyDirectives(
+                                "default-src 'self'; frame-ancestors 'none'; object-src 'none'"))
+                        .referrerPolicy(referrer -> referrer
+                                .policy(ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                        .contentTypeOptions(Customizer.withDefaults())
+                );
+                http.authorizeHttpRequests(auth -> auth
                 // Public: product catalogue reads & registration & login
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                 .requestMatchers("/api/register").permitAll()
@@ -81,6 +96,41 @@ public class SecurityConfig {
 
         return http.build();
     }
+
+
+        @Bean
+        @Order(2)
+        SecurityFilterChain web(HttpSecurity http) throws Exception {
+
+        http.authorizeHttpRequests(auth -> auth
+                .requestMatchers(
+                        HttpMethod.GET,
+                        "/products/*/reviews.html"
+                ).permitAll()
+                .anyRequest().denyAll()
+        );
+
+        // Keep CSRF protection enabled for web pages
+        http.csrf(Customizer.withDefaults());
+
+        http.formLogin(form -> form.disable());
+
+        // Security headers for HTML pages
+        http.headers(headers -> headers
+                .frameOptions(frame -> frame.deny())
+                .httpStrictTransportSecurity(hsts -> hsts
+                        .includeSubDomains(true)
+                        .maxAgeInSeconds(31_536_000))
+                .contentSecurityPolicy(csp -> csp
+                        .policyDirectives(
+                                "default-src 'self'; frame-ancestors 'none'; object-src 'none'"))
+                .referrerPolicy(referrer -> referrer
+                        .policy(ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                .contentTypeOptions(Customizer.withDefaults())
+        );
+
+        return http.build();
+        }
 
     // ── Helpers ──────────────────────────────────────────────────────────
 

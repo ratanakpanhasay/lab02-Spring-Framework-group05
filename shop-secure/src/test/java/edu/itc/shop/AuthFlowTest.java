@@ -13,7 +13,10 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
-                "shop.security.jwt-secret=test-secret-key-that-is-at-least-32-characters-long"
+                "spring.datasource.url=jdbc:h2:mem:authflow-test",
+                "shop.security.jwt-secret=test-secret-key-that-is-at-least-32-characters-long",
+                "shop.seed.admin-password=Admin-pass-123",
+                "shop.seed.customer-password=Alice-pass-123"
         }
 )
 class AuthFlowTest {

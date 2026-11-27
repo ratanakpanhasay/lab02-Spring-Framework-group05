@@ -296,3 +296,102 @@ All 13 tests passed successfully.
 | **Total** | **13** | **0** | **0** |
 
 The test suite verified successful authentication, invalid credentials, unauthenticated access, authenticated requests, controller-level security, service-level authorization, and application context startup.
+
+## Task 5 — Security Hardening
+
+### 5.1 CSRF Strategy
+
+The CSRF strategy is documented in `docs/csrf.md`. The stateless API uses JWT Bearer authentication rather than session cookies.
+
+### 5.2 CORS Configuration
+
+CORS is configured in `CorsConfig.java` and enabled in `SecurityConfig.java`.
+
+**Test 1: Allowed origin**
+
+
+curl -i -X OPTIONS http://localhost:8080/api/products \
+  -H "Origin: http://localhost:5173" \
+  -H "Access-Control-Request-Method: GET" \
+  -H "Access-Control-Request-Headers: Authorization, Content-Type"
+
+
+Result:
+
+http
+HTTP/1.1 200
+Access-Control-Allow-Origin: http://localhost:5173
+Access-Control-Allow-Methods: GET,POST,PUT,DELETE
+Access-Control-Allow-Headers: Authorization, Content-Type
+Access-Control-Expose-Headers: Location
+Access-Control-Max-Age: 3600
+
+**Test 2: Disallowed origin**
+
+
+curl -i -X OPTIONS http://localhost:8080/api/products \
+  -H "Origin: http://evil.example" \
+  -H "Access-Control-Request-Method: GET" \
+  -H "Access-Control-Request-Headers: Authorization, Content-Type"
+
+
+Result:
+
+http
+HTTP/1.1 403
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+
+Invalid CORS request
+
+The trusted origin receives the required CORS headers. The untrusted origin is rejected with HTTP 403 and no Access-Control-Allow-Origin header.
+
+Result: PASS
+
+### 5.3 Security Headers
+
+Security headers are explicitly configured in `SecurityConfig.java` to protect against clickjacking, MIME-type sniffing, insecure transport, and unauthorized resource loading.
+
+**Test 1: HTTP response headers**
+
+```bash
+curl -s -D - -o /dev/null http://localhost:8080/api/products
+```
+
+Result:
+
+```http
+HTTP/1.1 200
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+Content-Security-Policy: default-src 'self'; frame-ancestors 'none'; object-src 'none'
+Referrer-Policy: strict-origin-when-cross-origin
+Content-Type: application/json
+```
+
+The initial HEAD request returned HTTP 401 because only GET requests were explicitly permitted for public product endpoints. A GET request was used to verify the headers on a successful response without changing the authorization rules.
+
+**Test 2: HTTPS response headers**
+
+A temporary self-signed certificate was generated to verify HSTS over HTTPS.
+
+```bash
+curl -k -s -D - -o /dev/null https://localhost:8443/api/products
+```
+
+Result:
+
+```http
+HTTP/1.1 200
+X-Content-Type-Options: nosniff
+Strict-Transport-Security: max-age=31536000 ; includeSubDomains
+X-Frame-Options: DENY
+Content-Security-Policy: default-src 'self'; frame-ancestors 'none'; object-src 'none'
+Referrer-Policy: strict-origin-when-cross-origin
+Content-Type: application/json
+```
+
+HSTS is correctly returned over HTTPS with a maximum age of one year and includes subdomains. The self-signed certificate and curl's certificate verification bypass were used for local testing only.
+
+**Result: PASS — All five required security headers verified.**
