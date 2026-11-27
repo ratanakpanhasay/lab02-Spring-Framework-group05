@@ -213,3 +213,86 @@ could read Alice's history and the full list, and received 204 for shipping.
 Alice then read the order with status `SHIPPED`. A missing order returned 404 and
 an invalid quantity returned 400. The method-level denial matched the existing
 filter-chain denial's JSON fields.
+
+## Task 4 — JWT Authentication and Stateless API
+
+### Why JWT Authentication?
+
+Task 3 used HTTP Basic Authentication, where the client sends username and password with each request. In Task 4, authentication was changed to JWT (JSON Web Token).
+
+After a successful login, the server issues an access token containing the user's identity and roles. The client then uses this token to authenticate subsequent requests by sending it in the Authorization header.
+
+JWT allows the API to operate statelessly because the server does not need to maintain a server-side session for each authenticated user.
+
+### Login Endpoint
+
+The login endpoint is:
+
+`POST /api/auth/login`
+
+The client sends the username and password in a JSON request body. The server authenticates the credentials using the configured AuthenticationManager.
+
+- Valid credentials: returns HTTP 200 and a JWT access token.
+- Invalid credentials: returns HTTP 401 Unauthorized.
+
+The issued token contains the user's subject, roles, issuer, issued-at time, expiration time, and a unique token identifier (`jti`).
+
+### Token Validation and Authorization
+
+The API is configured as a stateless resource server using JWT Bearer authentication.
+
+When a client sends a request with an access token in the `Authorization: Bearer` header, Spring Security:
+
+1. Extracts the Bearer token.
+2. Validates the JWT signature using the configured secret key.
+3. Validates the issuer (`shop-api`).
+4. Checks the token's expiration time.
+5. Converts the `roles` claim into granted authorities.
+6. Uses the authorities to determine whether the user is authorized to access the endpoint.
+
+The security configuration uses `SessionCreationPolicy.STATELESS`, so HTTP sessions are not used to maintain authentication state.
+
+- Missing or invalid token: HTTP 401 Unauthorized.
+- Valid token but insufficient permissions: HTTP 403 Forbidden.
+
+### Authentication Tests
+
+The authentication flow was tested using HTTP requests.
+
+#### 1. Successful login
+
+`POST /api/auth/login` with valid credentials returned HTTP 200 and an access token.
+
+#### 2. Invalid credentials
+
+Login with an incorrect password returned HTTP 401 Unauthorized.
+
+#### 3. Request without a token
+
+`GET /api/orders` without an Authorization header returned HTTP 401 Unauthorized.
+
+#### 4. Request with a valid token
+
+`GET /api/orders` with a valid Bearer token returned HTTP 200 OK.
+
+#### 5. Invalid token
+
+A request containing a malformed JWT returned HTTP 401 Unauthorized.
+
+### Automated Tests
+
+The full Maven test suite was executed using:
+
+`./mvnw test`
+
+All 13 tests passed successfully.
+
+| Test Class | Tests | Failures | Errors |
+|---|---:|---:|---:|
+| AuthFlowTest | 4 | 0 | 0 |
+| OrderControllerSecurityTest | 3 | 0 | 0 |
+| OrderServiceSecurityTest | 5 | 0 | 0 |
+| ShopSecureApplicationTests | 1 | 0 | 0 |
+| **Total** | **13** | **0** | **0** |
+
+The test suite verified successful authentication, invalid credentials, unauthenticated access, authenticated requests, controller-level security, service-level authorization, and application context startup.

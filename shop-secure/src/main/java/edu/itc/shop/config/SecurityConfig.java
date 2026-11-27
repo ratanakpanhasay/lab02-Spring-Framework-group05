@@ -14,50 +14,57 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 
 import tools.jackson.databind.json.JsonMapper;
 
-/**
- * Task-2 security configuration.
- *
- * <p>The temporary {@code InMemoryUserDetailsManager} from Task 1 has been removed.
- * Authentication is now delegated to {@link edu.itc.shop.security.JpaUserDetailsService},
- * which is picked up automatically by Spring Security's
- * {@link org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration}.</p>
- */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain api(HttpSecurity http, JsonMapper mapper) throws Exception {
+    SecurityFilterChain api(
+            HttpSecurity http,
+            JsonMapper mapper,
+            JwtAuthenticationConverter jwtAuthenticationConverter)
+            throws Exception {
 
         AuthenticationEntryPoint entryPoint = (request, response, ex) -> {
-            response.setHeader("WWW-Authenticate", "Basic realm=\"Realm\"");
+            response.setHeader("WWW-Authenticate", "Bearer");
             writeProblem(request, response, mapper,
                     HttpStatus.UNAUTHORIZED, "Authentication required");
         };
 
         http.authorizeHttpRequests(auth -> auth
-                // Public: product catalogue reads & registration
+                // Public: product catalogue reads & registration & login
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                 .requestMatchers("/api/register").permitAll()
+                .requestMatchers("/api/auth/**").permitAll()
+
                 // Role-restricted writes
-                .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/products/**")
+                .hasRole("ADMIN")
+
                 // Everything else under /api/** must be authenticated
                 .requestMatchers("/api/**").authenticated()
-                // Deny anything that didn't match above (defence in depth)
+
+                // Deny anything that didn't match above
                 .anyRequest().denyAll()
         );
 
-        http.httpBasic(basic -> basic.authenticationEntryPoint(entryPoint));
+        // HTTP Basic removed; JWT Bearer authentication enabled
+        http.oauth2ResourceServer(oauth2 -> oauth2
+                .jwt(jwt -> jwt
+                        .jwtAuthenticationConverter(jwtAuthenticationConverter)
+                )
+                .authenticationEntryPoint(entryPoint)
+        );
 
         http.formLogin(form -> form.disable());
 
-        // CSRF disabled: this chain accepts only Basic / Bearer credentials,
-        // never cookie-based session credentials, so CSRF is not applicable.
+        // Bearer-token API: no cookie-based authentication
         http.csrf(csrf -> csrf.disable());
 
         http.sessionManagement(session ->
@@ -68,13 +75,14 @@ public class SecurityConfig {
                 .authenticationEntryPoint(entryPoint)
                 .accessDeniedHandler((request, response, ex) ->
                         writeProblem(request, response, mapper,
-                                HttpStatus.FORBIDDEN, "Access denied"))
+                                HttpStatus.FORBIDDEN, "Access denied")
+                )
         );
 
         return http.build();
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────────────────────
 
     private static void writeProblem(
             HttpServletRequest request,

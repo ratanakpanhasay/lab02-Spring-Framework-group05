@@ -17,6 +17,8 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 
 import java.util.Optional;
 
@@ -39,6 +41,12 @@ class OrderControllerSecurityTest {
     // Keep the real, method-secured service in the MVC slice.
     @MockitoBean
     private OrderRepository repository;
+
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
+
+    @MockitoBean
+    private JwtAuthenticationConverter jwtAuthenticationConverter;
 
     @Test
     void anonymousRequestIsUnauthorized() throws Exception {
