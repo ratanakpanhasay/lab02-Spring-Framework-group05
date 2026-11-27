@@ -395,3 +395,53 @@ Content-Type: application/json
 HSTS is correctly returned over HTTPS with a maximum age of one year and includes subdomains. The self-signed certificate and curl's certificate verification bypass were used for local testing only.
 
 **Result: PASS — All five required security headers verified.**
+
+### 5.4 — Stored XSS Protection
+
+#### Implementation
+
+- Created the Review entity, ReviewRepository, and ReviewRequest DTO with input validation.
+- Implemented authenticated `POST /api/reviews`.
+- Implemented public `GET /api/products/{id}/reviews`.
+- Created a Thymeleaf review page at `/products/{id}/reviews.html`.
+- Used `th:text` to escape user-controlled review content.
+
+#### Test Results
+
+| Test | Expected | Actual |
+|---|---|---|
+| Unauthenticated review submission | 401 Unauthorized | PASS |
+| Authenticated review submission | 201 Created | PASS |
+| Public review retrieval | 200 OK | PASS |
+| JSON Content-Type | application/json | PASS |
+| X-Content-Type-Options | nosniff | PASS |
+| Safe HTML rendering | Escaped content | PASS |
+| Unsafe HTML demonstration | Raw HTML rendering | PASS |
+
+#### Safe Rendering
+
+Thymeleaf's `th:text` escapes HTML characters, preventing stored review content from being interpreted as executable HTML.
+
+#### Unsafe Rendering Demonstration
+
+A separate branch, `lab05-task-5-xss-demo`, was created to demonstrate unsafe rendering using `th:utext`.
+
+- Demonstration commit: `a00ea85`
+- The browser rendered the submitted HTML as a broken image instead of plain text.
+- Content Security Policy remained enabled as an additional protection layer.
+- JavaScript execution was not independently verified.
+- The demonstration branch was not merged into the secure implementation.
+
+#### Conclusion
+
+User-controlled content must be escaped when rendered in HTML. Content Security Policy provides additional protection but does not replace proper output escaping.
+
+#### Screenshot Evidence
+
+- `05_04_Review_Unauthenticated.png`
+- `05_04_XSS_Review_Created.png`
+- `05_04_XSS_JSON_Response.png`
+- `05_04_XSS_Safe_HTML.png`
+- `05_04_XSS_Escaped_HTML_Source.png`
+- `05_04_XSS_Unsafe_HTML_Source.png`
+- `05_04_XSS_Unsafe_HTML.png`
