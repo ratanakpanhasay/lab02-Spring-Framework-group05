@@ -1,0 +1,16 @@
+package edu.itc.shop.repository;
+
+import edu.itc.shop.domain.UserAccount;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+/**
+ * Data-access layer for {@link UserAccount}.
+ */
+public interface UserAccountRepository extends JpaRepository<UserAccount, Long> {
+
+    Optional<UserAccount> findByUsername(String username);
+
+    boolean existsByUsername(String username);
+}

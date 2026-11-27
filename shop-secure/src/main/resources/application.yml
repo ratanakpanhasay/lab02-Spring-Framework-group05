@@ -16,3 +16,14 @@ spring:
     console:
       enabled: false
 
+# ── Seed accounts (Task 2) ────────────────────────────────────────────────────
+# Override via SHOP_SEED_ADMIN_PASSWORD / SHOP_SEED_CUSTOMER_PASSWORD env vars.
+# These dev-only defaults must NEVER be used in production.
+shop:
+  seed:
+    admin-password: ${SHOP_SEED_ADMIN_PASSWORD:Admin-pass-123}
+    customer-password: ${SHOP_SEED_CUSTOMER_PASSWORD:Alice-pass-123}
+
+  security:
+    jwt-secret: ${JWT_SECRET}
+    access-token-ttl: 15m
